@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seletor de Vazão de Pontas de Pulverização</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        brand: '#1A5E46'
+                    }
+                }
+            }
+        }
+
+        // Detectar modo escuro
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+    <style>
+        .fixed-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .scrollable-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        /* Estilização dos sliders duplos */
+        .slider-container {
+            position: relative;
+            width: 100%;
+            padding-top: 10px;
+            margin-bottom: 20px;
+        }
+        .dual-slider {
+            pointer-events: none;
+            position: absolute;
+            height: 0;
+            width: 100%;
+            outline: none;
+            z-index: 2;
+        }
+        .dual-slider::-webkit-slider-thumb {
+            pointer-events: all;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+        }
+        .dual-slider::-moz-range-thumb {
+            pointer-events: all;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+            border: none;
+        }
+        .slider-track {
+            width: 100%;
+            height: 2px;
+            background: #ddd;
+            position: absolute;
+            margin-top: 10px;
+        }
+        .slider-track-dark {
+            background: #4B5563;
+        }
+        
+        /* Botões de incremento/decremento */
+        .increment-controls {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+        .increment-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #5D5CDE;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+        }
+        .increment-button:hover {
+            background-color: #4B4BB0;
+        }
+        .increment-button:active {
+            transform: scale(0.95);
+        }
+        .dark .increment-button {
+            background-color: #6D6CDE;
+        }
+        .dark .increment-button:hover {
+            background-color: #7D7CEE;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-200">
+    <div class="fixed-container">
+        <!-- Cabeçalho fixo com logo e nome -->
+        <header class="p-4 bg-white dark:bg-gray-800 shadow-md z-10">
+            <div class="container mx-auto flex flex-col md:flex-row items-center justify-between">
+                <div class="flex items-center mb-3 md:mb-0">
+                    <img src="https://pfst.cf2.poecdn.net/base/image/c0db5802abb1bb192968d5edd82d5f2d4ee307028cf85bb54cceb67dda5c48c9?w=235&h=235" 
+                         alt="PR2 Soluções" class="h-14 mr-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-brand dark:text-teal-400">Seletor de Vazão de Pontas</h1>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Desenvolvido por Eng. Agr. Ralph Rabelo Andrade</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Conteúdo principal (rolável) -->
+        <div class="scrollable-container px-4 py-2">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                <!-- Controles - sempre visíveis -->
+                <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md lg:sticky lg:top-4 lg:self-start">
+                    <h2 class="text-lg font-semibold mb-3">Parâmetros de Aplicação</h2>
+                    
+                    <!-- Imagem ilustrativa -->
+                    <div class="mb-4 bg-white dark:bg-gray-700 p-2 rounded-lg">
+                        <img src="https://v3.fal.media/public/temp/image/f8bb0d45-8ccc-4a2e-b79c-f99ef5e3f0e2.jpg" 
+                             alt="Pulverizador Autopropelido" class="w-full h-auto rounded shadow">
+                        <p class="text-xs text-center mt-1 text-gray-500 dark:text-gray-400">Pulverizador autopropelido</p>
+                    </div>
+                    
+                    <!-- Taxa de Aplicação -->
+                    <div class="mb-4">
+                        <label for="taxaAplicacao" class="block mb-1 font-medium text-sm">
+                            Taxa de Aplicação (L/ha): <span id="taxaAplicacaoValue">100</span>
+                        </label>
+                        <input type="range" id="taxaAplicacao" min="0" max="200" value="100" step="1"
+                            class="w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        <!-- Botões de incremento/decremento -->
+                        <div class="increment-controls">
+                            <div class="increment-button" id="taxaAplicacao-decrement">-</div>
+                            <span class="mx-2 text-sm">1 unidade</span>
+                            <div class="increment-button" id="taxaAplicacao-increment">+</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Espaçamento entre Bicos -->
+                    <div class="mb-4">
+                        <label for="espacamentoBicos" class="block mb-1 font-medium text-sm">
+                            Espaçamento entre Bicos (cm): <span id="espacamentoBicosValue">50</span>
+                        </label>
+                        <input type="range" id="espacamentoBicos" min="0" max="100" value="50" step="1"
+                            class="w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                        <!-- Botões de incremento/decremento -->
+                        <div class="increment-controls">
+                            <div class="increment-button" id="espacamentoBicos-decrement">-</div>
+                            <span class="mx-2 text-sm">1 unidade</span>
+                            <div class="increment-button" id="espacamentoBicos-increment">+</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Intervalo de Velocidade -->
+                    <div class="mb-4">
+                        <label for="velocidade" class="block mb-1 font-medium text-sm">
+                            Intervalo de Velocidade (km/h): <span id="velocidadeMinValue">5</span> - <span id="velocidadeMaxValue">10</span>
+                        </label>
+                        <div class="slider-container">
+                            <div class="slider-track dark:slider-track-dark"></div>
+                            <input type="range" id="velocidadeMin" min="0" max="25" value="5" step="0.1" class="dual-slider">
+                            <input type="range" id="velocidadeMax" min="0" max="25" value="10" step="0.1" class="dual-slider">
+                        </div>
+                        <!-- Botões de incremento/decremento para velocidade mínima -->
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                                <p class="text-xs text-center mb-1">Velocidade Mínima:</p>
+                                <div class="increment-controls justify-center">
+                                    <div class="increment-button" id="velocidadeMin-decrement">-</div>
+                                    <span class="mx-2 text-xs">0,1</span>
+                                    <div class="increment-button" id="velocidadeMin-increment">+</div>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-center mb-1">Velocidade Máxima:</p>
+                                <div class="increment-controls justify-center">
+                                    <div class="increment-button" id="velocidadeMax-decrement">-</div>
+                                    <span class="mx-2 text-xs">0,1</span>
+                                    <div class="increment-button" id="velocidadeMax-increment">+</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Intervalo de Pressão -->
+                    <div class="mb-4">
+                        <label for="pressao" class="block mb-1 font-medium text-sm">
+                            Intervalo de Pressão Desejado (PSI): <span id="pressaoMinValue">20</span> - <span id="pressaoMaxValue">60</span>
+                        </label>
+                        <div class="slider-container">
+                            <div class="slider-track dark:slider-track-dark"></div>
+                            <input type="range" id="pressaoMin" min="0" max="100" value="20" step="1" class="dual-slider">
+                            <input type="range" id="pressaoMax" min="0" max="100" value="60" step="1" class="dual-slider">
+                        </div>
+                        <!-- Botões de incremento/decremento para pressão -->
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                                <p class="text-xs text-center mb-1">Pressão Mínima:</p>
+                                <div class="increment-controls justify-center">
+                                    <div class="increment-button" id="pressaoMin-decrement">-</div>
+                                    <span class="mx-2 text-xs">1 PSI</span>
+                                    <div class="increment-button" id="pressaoMin-increment">+</div>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-xs text-center mb-1">Pressão Máxima:</p>
+                                <div class="increment-controls justify-center">
+                                    <div class="increment-button" id="pressaoMax-decrement">-</div>
+                                    <span class="mx-2 text-xs">1 PSI</span>
+                                    <div class="increment-button" id="pressaoMax-increment">+</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="errorMessage" class="hidden text-red-500 mt-2 p-2 bg-red-50 dark:bg-red-900 rounded-md text-sm"></div>
+                </div>
+                
+                <!-- Gráfico - ocupa maior espaço na tela -->
+                <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-md lg:col-span-2">
+                    <div class="h-[70vh]">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rodapé com créditos -->
+            <div class="text-center mt-4 text-xs text-gray-500 dark:text-gray-400">
+                <p>PR2 Soluções © 2024 - Todos os direitos reservados</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados das pontas de pulverização baseados na norma ISO 10625:2018
+        const nozzles = [
+            { size: "0050", name: "Blue lilac", colorCode: "#8F7AC5", vazaoGalMin: 0.050, label: '0050' },
+            { size: "0067", name: "Olive green", colorCode: "#424632", vazaoGalMin: 0.067, label: '0067' },
+            { size: "0075", name: "Light pink", colorCode: "#EA899A", vazaoGalMin: 0.075, label: '0075' },
+            { size: "01", name: "Pure orange", colorCode: "#E35205", vazaoGalMin: 0.1, label: '01' },
+            { size: "015", name: "Traffic green", colorCode: "#308446", vazaoGalMin: 0.15, label: '015' },
+            { size: "02", name: "Zinc yellow", colorCode: "#F8F32B", vazaoGalMin: 0.2, label: '02' },
+            { size: "025", name: "Signal violet", colorCode: "#924E7D", vazaoGalMin: 0.25, label: '025' },
+            { size: "03", name: "Gentian blue", colorCode: "#0E518D", vazaoGalMin: 0.3, label: '03' },
+            { size: "035", name: "Purple red", colorCode: "#75151E", vazaoGalMin: 0.35, label: '035' },
+            { size: "04", name: "Flame red", colorCode: "#AF2B1E", vazaoGalMin: 0.4, label: '04' },
+            { size: "05", name: "Nut brown", colorCode: "#5B3A29", vazaoGalMin: 0.5, label: '05' },
+            { size: "06", name: "Signal grey", colorCode: "#969992", vazaoGalMin: 0.6, label: '06' },
+            { size: "08", name: "Traffic white", colorCode: "#F1F1F1", vazaoGalMin: 0.8, label: '08' },
+            { size: "10", name: "Light blue", colorCode: "#3B83BD", vazaoGalMin: 1.0, label: '10' },
+            { size: "12", name: "Raspberry red", colorCode: "#C51D34", vazaoGalMin: 1.2, label: '12' },
+            { size: "14", name: "Olive yellow", colorCode: "#9A9500", vazaoGalMin: 1.4, label: '14' },
+            { size: "15", name: "Yellow green", colorCode: "#57A639", vazaoGalMin: 1.5, label: '15' },
+            { size: "16", name: "Orange brown", colorCode: "#A65E2E", vazaoGalMin: 1.6, label: '16' },
+            { size: "18", name: "Turquoise blue", colorCode: "#5D9B9B", vazaoGalMin: 1.8, label: '18' },
+            { size: "20", name: "Black", colorCode: "#000000", vazaoGalMin: 2.0, label: '20' }
+        ];
+
+        // Referências aos elementos da UI
+        const taxaAplicacaoInput = document.getElementById('taxaAplicacao');
+        const espacamentoBicosInput = document.getElementById('espacamentoBicos');
+        const velocidadeMinInput = document.getElementById('velocidadeMin');
+        const velocidadeMaxInput = document.getElementById('velocidadeMax');
+        const pressaoMinInput = document.getElementById('pressaoMin');
+        const pressaoMaxInput = document.getElementById('pressaoMax');
+        
+        const taxaAplicacaoValue = document.getElementById('taxaAplicacaoValue');
+        const espacamentoBicosValue = document.getElementById('espacamentoBicosValue');
+        const velocidadeMinValue = document.getElementById('velocidadeMinValue');
+        const velocidadeMaxValue = document.getElementById('velocidadeMaxValue');
+        const pressaoMinValue = document.getElementById('pressaoMinValue');
+        const pressaoMaxValue = document.getElementById('pressaoMaxValue');
+        
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Funções para os botões de incremento/decremento
+        function setupIncrementButtons() {
+            // Taxa de Aplicação (incremento de 1)
+            document.getElementById('taxaAplicacao-increment').addEventListener('click', () => {
+                const currentValue = parseInt(taxaAplicacaoInput.value);
+                const newValue = Math.min(currentValue + 1, parseInt(taxaAplicacaoInput.max));
+                taxaAplicacaoInput.value = newValue;
+                taxaAplicacaoValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('taxaAplicacao-decrement').addEventListener('click', () => {
+                const currentValue = parseInt(taxaAplicacaoInput.value);
+                const newValue = Math.max(currentValue - 1, parseInt(taxaAplicacaoInput.min));
+                taxaAplicacaoInput.value = newValue;
+                taxaAplicacaoValue.textContent = newValue;
+                updateChart();
+            });
+            
+            // Espaçamento entre Bicos (incremento de 1)
+            document.getElementById('espacamentoBicos-increment').addEventListener('click', () => {
+                const currentValue = parseInt(espacamentoBicosInput.value);
+                const newValue = Math.min(currentValue + 1, parseInt(espacamentoBicosInput.max));
+                espacamentoBicosInput.value = newValue;
+                espacamentoBicosValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('espacamentoBicos-decrement').addEventListener('click', () => {
+                const currentValue = parseInt(espacamentoBicosInput.value);
+                const newValue = Math.max(currentValue - 1, parseInt(espacamentoBicosInput.min));
+                espacamentoBicosInput.value = newValue;
+                espacamentoBicosValue.textContent = newValue;
+                updateChart();
+            });
+            
+            // Velocidade Mínima (incremento de 0.1)
+            document.getElementById('velocidadeMin-increment').addEventListener('click', () => {
+                const currentValue = parseFloat(velocidadeMinInput.value);
+                let newValue = Math.min(parseFloat((currentValue + 0.1).toFixed(1)), parseFloat(velocidadeMinInput.max));
+                
+                // Verificar relação com velocidade máxima
+                if (newValue >= parseFloat(velocidadeMaxInput.value)) {
+                    velocidadeMaxInput.value = Math.min(parseFloat((newValue + 0.5).toFixed(1)), parseFloat(velocidadeMaxInput.max));
+                    velocidadeMaxValue.textContent = velocidadeMaxInput.value;
+                }
+                
+                velocidadeMinInput.value = newValue;
+                velocidadeMinValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('velocidadeMin-decrement').addEventListener('click', () => {
+                const currentValue = parseFloat(velocidadeMinInput.value);
+                const newValue = Math.max(parseFloat((currentValue - 0.1).toFixed(1)), parseFloat(velocidadeMinInput.min));
+                velocidadeMinInput.value = newValue;
+                velocidadeMinValue.textContent = newValue;
+                updateChart();
+            });
+            
+            // Velocidade Máxima (incremento de 0.1)
+            document.getElementById('velocidadeMax-increment').addEventListener('click', () => {
+                const currentValue = parseFloat(velocidadeMaxInput.value);
+                const newValue = Math.min(parseFloat((currentValue + 0.1).toFixed(1)), parseFloat(velocidadeMaxInput.max));
+                velocidadeMaxInput.value = newValue;
+                velocidadeMaxValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('velocidadeMax-decrement').addEventListener('click', () => {
+                const currentValue = parseFloat(velocidadeMaxInput.value);
+                let newValue = Math.max(parseFloat((currentValue - 0.1).toFixed(1)), parseFloat(velocidadeMaxInput.min));
+                
+                // Verificar relação com velocidade mínima
+                if (newValue <= parseFloat(velocidadeMinInput.value)) {
+                    velocidadeMinInput.value = Math.max(parseFloat((newValue - 0.5).toFixed(1)), parseFloat(velocidadeMinInput.min));
+                    velocidadeMinValue.textContent = velocidadeMinInput.value;
+                }
+                
+                velocidadeMaxInput.value = newValue;
+                velocidadeMaxValue.textContent = newValue;
+                updateChart();
+            });
+            
+            // Pressão Mínima (incremento de 1)
+            document.getElementById('pressaoMin-increment').addEventListener('click', () => {
+                const currentValue = parseInt(pressaoMinInput.value);
+                let newValue = Math.min(currentValue + 1, parseInt(pressaoMinInput.max));
+                
+                // Verificar relação com pressão máxima
+                if (newValue >= parseInt(pressaoMaxInput.value)) {
+                    pressaoMaxInput.value = Math.min(newValue + 5, parseInt(pressaoMaxInput.max));
+                    pressaoMaxValue.textContent = pressaoMaxInput.value;
+                }
+                
+                pressaoMinInput.value = newValue;
+                pressaoMinValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('pressaoMin-decrement').addEventListener('click', () => {
+                const currentValue = parseInt(pressaoMinInput.value);
+                const newValue = Math.max(currentValue - 1, parseInt(pressaoMinInput.min));
+                pressaoMinInput.value = newValue;
+                pressaoMinValue.textContent = newValue;
+                updateChart();
+            });
+            
+            // Pressão Máxima (incremento de 1)
+            document.getElementById('pressaoMax-increment').addEventListener('click', () => {
+                const currentValue = parseInt(pressaoMaxInput.value);
+                const newValue = Math.min(currentValue + 1, parseInt(pressaoMaxInput.max));
+                pressaoMaxInput.value = newValue;
+                pressaoMaxValue.textContent = newValue;
+                updateChart();
+            });
+            
+            document.getElementById('pressaoMax-decrement').addEventListener('click', () => {
+                const currentValue = parseInt(pressaoMaxInput.value);
+                let newValue = Math.max(currentValue - 1, parseInt(pressaoMaxInput.min));
+                
+                // Verificar relação com pressão mínima
+                if (newValue <= parseInt(pressaoMinInput.value)) {
+                    pressaoMinInput.value = Math.max(newValue - 5, parseInt(pressaoMinInput.min));
+                    pressaoMinValue.textContent = pressaoMinInput.value;
+                }
+                
+                pressaoMaxInput.value = newValue;
+                pressaoMaxValue.textContent = newValue;
+                updateChart();
+            });
+        }
+        
+        // Converter gal/min para L/min
+        function convertGalMinToLMin(galMin) {
+            return galMin * 3.785412;
+        }
+        
+        // Calcular pressão
+        function calculatePressure(taxaAplicacao, velocidade, espacamentoBicos, vazaoLMin) {
+            // Fórmula: 1.208647*(10^(-8))*((($TA*$V*$EB)/$VP)^2)
+            return 1.208647 * (Math.pow(10, -8)) * Math.pow(((taxaAplicacao * velocidade * espacamentoBicos) / vazaoLMin), 2);
+        }
+        
+        // Variável global para armazenar pontas filtradas no escopo atual
+        let filteredNozzles = [];
+        let chart;
+        
+        function initChart() {
+            const ctx = document.getElementById('pressureChart').getContext('2d');
+            
+            // Registrar o plugin de linhas de pressão
+            const pressurePlugin = {
+                id: 'pressureLines',
+                afterDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const minPressure = parseFloat(pressaoMinInput.value);
+                    const maxPressure = parseFloat(pressaoMaxInput.value);
+                    
+                    // Garantir que o gráfico esteja inicializado
+                    if (!chart.chartArea) return;
+                    
+                    const xMin = chart.scales.x.getPixelForValue(minPressure);
+                    const xMax = chart.scales.x.getPixelForValue(Math.min(maxPressure, 100));
+                    
+                    // Definir o cinza escuro para ambas as linhas
+                    const lineColor = document.documentElement.classList.contains('dark') ? 
+                        'rgba(180, 180, 180, 0.9)' : 'rgba(70, 70, 70, 0.9)';
+                    
+                    // Desenhar linha pontilhada para pressão mínima
+                    ctx.save();
+                    ctx.strokeStyle = lineColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 3]); // Linha pontilhada
+                    ctx.beginPath();
+                    ctx.moveTo(xMin, chart.chartArea.bottom);
+                    ctx.lineTo(xMin, chart.chartArea.top);
+                    ctx.stroke();
+                    ctx.restore();
+                    
+                    // Desenhar linha pontilhada para pressão máxima
+                    ctx.save();
+                    ctx.strokeStyle = lineColor;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 3]); // Linha pontilhada
+                    ctx.beginPath();
+                    ctx.moveTo(xMax, chart.chartArea.bottom);
+                    ctx.lineTo(xMax, chart.chartArea.top);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            };
+            
+            // Criação do gráfico
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [],
+                        borderColor: [],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false // Ocultar legenda
+                        },
+                        title: {
+                            display: false // Eliminar título
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const index = context[0].dataIndex;
+                                    const nozzleLabel = chart.data.labels[index];
+                                    const nozzleData = filteredNozzles[index];
+                                    return `${nozzleLabel} (${nozzleData.name})`;
+                                },
+                                label: function(context) {
+                                    const range = context.raw;
+                                    return [
+                                        `Pressão mínima: ${range[0].toFixed(1)} PSI`,
+                                        `Pressão máxima: ${range[1].toFixed(1)} PSI`,
+                                        `Vazão: ${convertGalMinToLMin(filteredNozzles[context.dataIndex].vazaoGalMin).toFixed(1)} L/min`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Pressão (PSI)',
+                                color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#1f2937'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#1f2937'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#1f2937'
+                            }
+                        }
+                    }
+                },
+                plugins: [pressurePlugin, {
+                    id: 'pressureLabels',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        
+                        chart.data.datasets.forEach((dataset, i) => {
+                            const meta = chart.getDatasetMeta(i);
+                            dataset.data.forEach((range, index) => {
+                                const bar = meta.data[index];
+                                if (!bar) return;
+                                
+                                // Posição da barra no gráfico
+                                const model = bar.getProps(['x', 'y', 'height']);
+                                
+                                // Verificar contrastes para cores claras
+                                const nozzleColor = filteredNozzles[index].colorCode.toLowerCase();
+                                // Cores que precisam de texto escuro por serem claras
+                                const isLightColor = ['#f8f32b', '#f1f1f1', '#ffffff'].some(color => 
+                                    nozzleColor === color || nozzleColor.startsWith(color.substring(0, 4)));
+                                
+                                // Definir a cor do texto baseado no fundo da barra
+                                ctx.fillStyle = isLightColor ? '#333333' : '#ffffff';
+                                
+                                // Mostrar valor mínimo (no canto esquerdo da barra)
+                                const minX = chart.scales.x.getPixelForValue(Math.max(1, range[0]));
+                                ctx.textAlign = 'left';
+                                ctx.font = 'bold 10px Arial';
+                                ctx.fillText(range[0].toFixed(1), minX + 4, model.y);
+                                
+                                // Mostrar valor máximo
+                                if (range[1] > 100) {
+                                    // Se pressão máxima exceder 100 PSI
+                                    const maxBarX = chart.scales.x.getPixelForValue(100);
+                                    ctx.textAlign = 'right';
+                                    ctx.fillText(range[1].toFixed(1) + " →", maxBarX - 5, model.y);
+                                } else {
+                                    // Se estiver dentro do limite visível
+                                    const maxX = chart.scales.x.getPixelForValue(range[1]);
+                                    ctx.textAlign = 'right';
+                                    ctx.fillText(range[1].toFixed(1), maxX - 5, model.y);
+                                }
+                            });
+                        });
+                    }
+                }]
+            });
+            
+            // Atualizar cores quando o modo escuro muda
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                updateChartColors();
+            });
+        }
+        
+        function updateChartColors() {
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const textColor = isDarkMode ? '#e2e8f0' : '#1f2937';
+            
+            chart.options.scales.x.title.color = textColor;
+            chart.options.scales.x.ticks.color = textColor;
+            chart.options.scales.y.ticks.color = textColor;
+            
+            chart.update();
+        }
+        
+        // Função para atualizar o gráfico com novos dados
+        function updateChart() {
+            const taxaAplicacao = parseFloat(taxaAplicacaoInput.value);
+            const espacamentoBicos = parseFloat(espacamentoBicosInput.value);
+            const velocidadeMin = parseFloat(velocidadeMinInput.value);
+            const velocidadeMax = parseFloat(velocidadeMaxInput.value);
+            
+            // Verificar se velocidade mínima é menor que velocidade máxima
+            if (velocidadeMin >= velocidadeMax) {
+                errorMessage.textContent = "A velocidade mínima deve ser menor que a velocidade máxima!";
+                errorMessage.classList.remove("hidden");
+                return;
+            } else {
+                errorMessage.classList.add("hidden");
+            }
+            
+            // Filtrar e calcular pressões para cada ponta
+            filteredNozzles = [];
+            const pressureRanges = [];
+            
+            for (const nozzle of nozzles) {
+                const vazaoLMin = convertGalMinToLMin(nozzle.vazaoGalMin);
+                const minPressure = calculatePressure(taxaAplicacao, velocidadeMin, espacamentoBicos, vazaoLMin);
+                const maxPressure = calculatePressure(taxaAplicacao, velocidadeMax, espacamentoBicos, vazaoLMin);
+                
+                // Filtrar pontas com pressão mínima > 100 PSI ou pressão máxima < 15 PSI
+                if (minPressure <= 100 && maxPressure >= 15) {
+                    filteredNozzles.push({
+                        ...nozzle,
+                        minPressure,
+                        maxPressure
+                    });
+                    // Armazenar o intervalo de pressão para esta ponta
+                    pressureRanges.push([minPressure, maxPressure]);
+                }
+            }
+            
+            // Atualizar o gráfico com pontas filtradas
+            const labels = filteredNozzles.map(n => `Ponta ${n.label}`);
+            
+            // Reconstruir os dados para o gráfico
+            chart.data.labels = labels;
+            chart.data.datasets = [{
+                data: pressureRanges,
+                backgroundColor: filteredNozzles.map(n => `${n.colorCode}E6`),
+                borderColor: filteredNozzles.map(n => n.colorCode),
+                borderWidth: 1
+            }];
+            
+            chart.update();
+        }
+        
+        // Event listeners para os controles deslizantes
+        taxaAplicacaoInput.addEventListener('input', function() {
+            taxaAplicacaoValue.textContent = this.value;
+            updateChart();
+        });
+        
+        espacamentoBicosInput.addEventListener('input', function() {
+            espacamentoBicosValue.textContent = this.value;
+            updateChart();
+        });
+        
+        velocidadeMinInput.addEventListener('input', function() {
+            velocidadeMinValue.textContent = this.value;
+            // Garantir que velocidade mínima não seja maior que máxima
+            if (parseFloat(this.value) >= parseFloat(velocidadeMaxInput.value)) {
+                velocidadeMaxInput.value = parseFloat(this.value) + 0.5;
+                velocidadeMaxValue.textContent = velocidadeMaxInput.value;
+            }
+            updateChart();
+        });
+        
+        velocidadeMaxInput.addEventListener('input', function() {
+            velocidadeMaxValue.textContent = this.value;
+            // Garantir que velocidade máxima não seja menor que mínima
+            if (parseFloat(this.value) <= parseFloat(velocidadeMinInput.value)) {
+                velocidadeMinInput.value = parseFloat(this.value) - 0.5;
+                velocidadeMinValue.textContent = velocidadeMinInput.value;
+            }
+            updateChart();
+        });
+        
+        pressaoMinInput.addEventListener('input', function() {
+            pressaoMinValue.textContent = this.value;
+            // Garantir que pressão mínima não seja maior que máxima
+            if (parseFloat(this.value) >= parseFloat(pressaoMaxInput.value)) {
+                pressaoMaxInput.value = parseFloat(this.value) + 5;
+                pressaoMaxValue.textContent = pressaoMaxInput.value;
+            }
+            updateChart();
+        });
+        
+        pressaoMaxInput.addEventListener('input', function() {
+            pressaoMaxValue.textContent = this.value;
+            // Garantir que pressão máxima não seja menor que mínima
+            if (parseFloat(this.value) <= parseFloat(pressaoMinInput.value)) {
+                pressaoMinInput.value = parseFloat(this.value) - 5;
+                pressaoMinValue.textContent = pressaoMinInput.value;
+            }
+            updateChart();
+        });
+        
+        // Inicializar o gráfico e os botões quando a página carregar
+        window.addEventListener('load', function() {
+            initChart();
+            setupIncrementButtons();
+            updateChart();
+        });
+    </script>
+</body>
+</html>

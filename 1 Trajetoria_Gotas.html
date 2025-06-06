@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Trajetória e Secagem de Gotas</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#5D5CDE',
+            secondary: '#8D6E63',
+          },
+          boxShadow: {
+            slider: '0 0 0 2px rgba(93, 92, 222, 0.3)',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Estilo para os sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 8px;
+      outline: none;
+      background: #e5e7eb;
+    }
+    
+    .dark input[type="range"] {
+      background: #374151;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #5D5CDE;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+      transition: all 0.2s ease;
+    }
+    
+    .dark input[type="range"]::-webkit-slider-thumb {
+      border-color: #1f2937;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 4px rgba(93, 92, 222, 0.3);
+    }
+    
+    input[type="range"]:active::-webkit-slider-thumb {
+      transform: scale(1.2);
+    }
+    
+    /* Estilo para o slider de diâmetro com cores */
+    #d {
+      height: 16px;
+      border-radius: 8px;
+      margin: 10px 0 5px 0;
+    }
+    
+    .slider-axis {
+      position: relative;
+      height: 25px;
+      margin-top: 5px;
+    }
+    
+    .slider-axis .tick {
+      position: absolute;
+      bottom: 15px;
+      width: 1px;
+      height: 6px;
+      background: #9ca3af;
+    }
+    
+    .dark .slider-axis .tick {
+      background: #6b7280;
+    }
+    
+    .slider-axis .tick-label {
+      position: absolute;
+      bottom: 0;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #6b7280;
+    }
+    
+    .dark .slider-axis .tick-label {
+      color: #9ca3af;
+    }
+    
+    /* Animações e transições */
+    .transition-all {
+      transition: all 0.3s ease;
+    }
+    
+    .pulse-value {
+      animation: pulse 2s ease infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+  </style>
+</head>
+<body class="bg-blue-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <h1 class="text-3xl font-bold text-center mb-2 text-primary dark:text-blue-400">Simulador de Trajetória e Secagem de Gotas</h1>
+    <p class="text-center text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+      Ajuste os parâmetros para simular como as gotas se comportam em diferentes condições de aplicação
+    </p>
+
+    <div class="flex flex-wrap lg:flex-nowrap gap-8 justify-center">
+      <!-- Painel de controles -->
+      <div class="w-full lg:w-2/5 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all">
+        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 text-primary dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+          </svg>
+          Características da Aplicação
+        </h2>
+
+        <div class="space-y-6 mb-8">
+          <div class="slider-container">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-medium text-gray-700 dark:text-gray-300">Altura (m)</label>
+              <span id="hVal" class="font-bold text-lg text-primary dark:text-blue-400 transition-all">5.00</span>
+            </div>
+            <input type="range" id="h" min="0" max="10" step="0.05" value="5" class="w-full">
+          </div>
+
+          <div class="slider-container">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-medium text-gray-700 dark:text-gray-300">Diâmetro da gota (µm)</label>
+              <span id="dVal" class="font-bold text-lg text-primary dark:text-blue-400 transition-all">200</span>
+            </div>
+            <input type="range" id="d" min="0" max="800" step="1" value="200" class="w-full">
+            <div class="slider-axis" id="axisD"></div>
+          </div>
+
+          <div class="legend-slider grid grid-cols-2 md:grid-cols-3 gap-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg" id="legendSlider">
+            <!-- Preenchido via JavaScript -->
+          </div>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-6 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 text-primary dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
+          </svg>
+          Condições Climáticas
+        </h2>
+
+        <div class="space-y-6">
+          <div class="slider-container">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-medium text-gray-700 dark:text-gray-300">Vento (km/h)</label>
+              <span id="vVal" class="font-bold text-lg text-primary dark:text-blue-400 transition-all">10.0</span>
+            </div>
+            <input type="range" id="v" min="0" max="30" step="0.5" value="10" class="w-full">
+          </div>
+
+          <div class="slider-container">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-medium text-gray-700 dark:text-gray-300">Umidade Relativa (%)</label>
+              <span id="rhVal" class="font-bold text-lg text-primary dark:text-blue-400 transition-all">50</span>
+            </div>
+            <input type="range" id="rh" min="0" max="100" step="1" value="50" class="w-full">
+          </div>
+
+          <div class="slider-container">
+            <div class="flex justify-between items-center mb-2">
+              <label class="font-medium text-gray-700 dark:text-gray-300">Temperatura (°C)</label>
+              <span id="tVal" class="font-bold text-lg text-primary dark:text-blue-400 transition-all">25.0</span>
+            </div>
+            <input type="range" id="t" min="0" max="50" step="0.5" value="25" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Painel de resultados -->
+      <div class="w-full lg:w-2/5 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all">
+        <h2 class="text-xl font-semibold mb-4 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+          </svg>
+          Distância Horizontal
+        </h2>
+        <div class="chart-wrapper mb-10 p-4" id="chartDistWrapper">
+          <div id="chartDist"></div>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-4 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-primary dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+          </svg>
+          Diâmetro Crítico
+        </h2>
+        <div id="critValue" class="text-center text-3xl font-bold mb-4 text-primary dark:text-blue-400 transition-all">0 µm</div>
+        <div class="chart-wrapper p-4" id="chartCritWrapper">
+          <div id="chartCrit"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-10 text-sm text-gray-500 dark:text-gray-400">
+      <button id="toggleTheme" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+        <span class="dark:hidden">Modo Escuro</span>
+        <span class="hidden dark:inline">Modo Claro</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+  // Detecção de modo escuro
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+  
+  document.getElementById('toggleTheme').addEventListener('click', function() {
+    document.documentElement.classList.toggle('dark');
+  });
+  
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  });
+
+  // Definições de classes de gotas
+  const classesGotas = [
+    { nome:"Ultra Grossa",        cor:"#000000", limBaixo:686.87 },
+    { nome:"Extremamente Grossa",  cor:"#FFFFFF", limBaixo:515.22, limCima:686.87 },
+    { nome:"Muito Grossa",         cor:"#00AB66", limBaixo:426.55, limCima:515.22 },
+    { nome:"Grossa",               cor:"#006AB6", limBaixo:369.99, limCima:426.55 },
+    { nome:"Média",                cor:"#FFE01B", limBaixo:253.7,  limCima:369.99 },
+    { nome:"Fina",                 cor:"#F9A03A", limBaixo:140.36, limCima:253.7 },
+    { nome:"Muito Fina",           cor:"#D7143F",                limCima:140.36 }
+  ];
+
+  // Referências a sliders e labels
+  const sliders = ['h','d','v','rh','t'].reduce((o,id)=>(o[id]=document.getElementById(id), o), {});
+  const labels  = { h:'hVal', d:'dVal', v:'vVal', rh:'rhVal', t:'tVal' };
+
+  // Funções auxiliares para o slider de diâmetro
+  function createSliderAxis(id, ticks, min, max){
+    const wrap = document.getElementById(id);
+    wrap.innerHTML = ''; // Limpar eixo existente se houver
+    for(let i=0; i<ticks; i++){
+      const pct = i/(ticks-1)*100;
+      const tick = document.createElement('div');
+      tick.className = 'tick'; tick.style.left = pct+'%';
+      wrap.appendChild(tick);
+      const lbl = document.createElement('div');
+      lbl.className = 'tick-label'; lbl.style.left = pct+'%';
+      lbl.textContent = Math.round(min + (max-min)*i/(ticks-1));
+      wrap.appendChild(lbl);
+    }
+  }
+  
+  function applySliderGradient(){
+    const d = sliders.d, min=+d.min, max=+d.max;
+    const segs = classesGotas.map(c=>({
+      lb: c.limBaixo||0, ub: c.limCima||max, cor: c.cor
+    })).sort((a,b)=>a.lb-b.lb);
+    const stops = [];
+    segs.forEach(s=>{
+      const start = ((s.lb-min)/(max-min)*100).toFixed(2),
+            end   = ((s.ub-min)/(max-min)*100).toFixed(2);
+      stops.push(`${s.cor} ${start}%`, `${s.cor} ${end}%`);
+    });
+    d.style.background = `linear-gradient(to right, ${stops.join(', ')})`;
+  }
+  
+  function renderLegendSlider(){
+    const lg = document.getElementById('legendSlider');
+    lg.innerHTML = ''; // Limpar legenda existente
+    classesGotas.slice().sort((a,b)=>{
+      const la=a.limBaixo||0, lb=b.limBaixo||0; return lb-la; // Ordem inversa para melhor layout
+    }).forEach(c=>{
+      const item = document.createElement('div');
+      item.className = 'flex items-center gap-2 text-sm';
+      
+      // Criar borda para o item branco
+      const borderClass = c.cor === "#FFFFFF" ? "border border-gray-400 dark:border-gray-500" : "";
+      
+      item.innerHTML = `<span class="w-4 h-4 rounded-sm flex-shrink-0 ${borderClass}" style="background:${c.cor}"></span>
+                      <span class="text-gray-700 dark:text-gray-300">${c.nome}</span>`;
+      lg.appendChild(item);
+    });
+  }
+
+  // Funções de física e cálculo
+  const rho_l=1000, rho_air=1.2, mu=1.8e-5, D_v=2.5e-5, p_atm=101325;
+  function pSat(T){ return 610.78*Math.exp(17.27*T/(T+237.3)); }
+  function Y_s(T){ const p=pSat(T); return 0.622*p/(p_atm-p); }
+  function Bmass(T,RH){ const Ys=Y_s(T), Yinf=RH*Ys; return (Ys-Yinf)/(1-Ys); }
+  function K_evap(T,RH){ return 8*D_v*rho_air/rho_l*Math.log(1+Bmass(T,RH)); }
+  function tEvap(dµm,T,RH){ const d=dµm*1e-6; return d*d/K_evap(T,RH); }
+  function Vt(dµm){
+    const d=dµm*1e-6;
+    const num=Math.pow(0.072,5)*Math.pow(rho_l-rho_air,5)*Math.pow(9.8,5)*Math.pow(d,8);
+    const den=Math.pow(rho_air,2)*Math.pow(mu,3);
+    return Math.pow(num/den,1/7);
+  }
+  function distHoriz(h,v_kmh,dµm){
+    const v = v_kmh/3.6, vt = Vt(dµm);
+    return (vt>0 ? (h/vt)*v : 0);
+  }
+  function tFall(h,dµm){ return Vt(dµm)>0 ? h/Vt(dµm) : Infinity; }
+  function findCrit(T,RH,h,v){
+    let lo=1, hi=800, mid;
+    for(let i=0; i<30; i++){
+      mid = (lo+hi)/2;
+      if(tFall(h,mid) > tEvap(mid,T,RH)) lo = mid;
+      else hi = mid;
+    }
+    return mid;
+  }
+
+  // Configuração do gráfico Distância
+  const optsDist = {
+    chart: { 
+      type: 'radialBar', 
+      offsetY: -10, 
+      animations: { enabled: true }, 
+      foreColor: '#6B7280',
+      background: 'transparent'
+    },
+    series: [0],
+    plotOptions: { 
+      radialBar: {
+        startAngle: -135, 
+        endAngle: 135,
+        hollow: { size: '65%' },
+        track: { 
+          background: '#E5E7EB',
+          strokeWidth: '97%',
+          margin: 5,
+          dropShadow: {
+            enabled: true,
+            blur: 3,
+            opacity: 0.1
+          }
+        },
+        dataLabels: {
+          name: { 
+            show: true, 
+            fontSize: '16px', 
+            offsetY: -10,
+            color: '#6B7280' 
+          },
+          value: { 
+            show: true, 
+            fontSize: '24px', 
+            offsetY: 10, 
+            formatter: v => v.toFixed(1) + ' m',
+            color: '#5D5CDE'
+          }
+        }
+      }
+    },
+    fill: { 
+      type: 'gradient',
+      gradient: { 
+        shade: 'dark', 
+        type: 'horizontal',
+        gradientToColors: ['#8D6E63'], 
+        stops: [0, 100],
+        colorStops: [
+          { offset: 0, color: '#5D5CDE' },
+          { offset: 100, color: '#8D6E63' }
+        ]
+      } 
+    },
+    stroke: { 
+      lineCap: 'round',
+      dashArray: 0
+    },
+    labels: ['Distância']
+  };
+  
+  // Configuração do gráfico Crítico
+  function getCritSeries(){
+    const max = 800;
+    return classesGotas.slice().sort((a,b)=>{
+      const la=a.limBaixo||0, lb=b.limBaixo||0; return la-lb;
+    }).map(c=>{
+      const lb=c.limBaixo||0, ub=c.limCima||max;
+      return { data:[ub-lb], color:c.cor };
+    });
+  }
+  
+  const optsCrit = {
+    chart: { 
+      type: 'bar', 
+      stacked: true, 
+      toolbar: { show: false },
+      background: 'transparent',
+      foreColor: '#6B7280'
+    },
+    plotOptions: { 
+      bar: { 
+        horizontal: true, 
+        barHeight: '70%',
+        borderRadius: 2 
+      } 
+    },
+    dataLabels: { enabled: false },
+    series: getCritSeries(),
+    xaxis: { 
+      min: 0, 
+      max: 800, 
+      tickAmount: 8, 
+      labels: { 
+        formatter: v => v,
+        style: {
+          colors: '#6B7280'
+        }
+      },
+      axisBorder: {
+        show: true,
+        color: '#E5E7EB'
+      },
+      axisTicks: {
+        show: true,
+        color: '#E5E7EB'
+      }
+    },
+    yaxis: { labels: { show: false } },
+    legend: { show: false },
+    tooltip: { enabled: false },
+    annotations: { xaxis: [] },
+    grid: {
+      borderColor: '#E5E7EB',
+      strokeDashArray: 4,
+      xaxis: {
+        lines: {
+          show: true
+        }
+      }
+    }
+  };
+  
+  // Inicializar gráficos
+  let chartDist, chartCrit;
+  
+  // Função para atualizar cores do tema dos gráficos
+  function updateChartsTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    
+    // Atualizar cores do gráfico de distância
+    if (chartDist) {
+      chartDist.updateOptions({
+        chart: {
+          foreColor: isDark ? '#9CA3AF' : '#6B7280',
+        },
+        plotOptions: {
+          radialBar: {
+            track: {
+              background: isDark ? '#374151' : '#E5E7EB',
+            },
+            dataLabels: {
+              name: {
+                color: isDark ? '#D1D5DB' : '#6B7280'
+              },
+              value: {
+                color: isDark ? '#93C5FD' : '#5D5CDE'
+              }
+            }
+          }
+        }
+      }, false, false);
+    }
+    
+    // Atualizar cores do gráfico crítico
+    if (chartCrit) {
+      chartCrit.updateOptions({
+        chart: {
+          foreColor: isDark ? '#9CA3AF' : '#6B7280',
+        },
+        xaxis: {
+          labels: {
+            style: {
+              colors: isDark ? '#9CA3AF' : '#6B7280'
+            }
+          },
+          axisBorder: {
+            color: isDark ? '#374151' : '#E5E7EB'
+          },
+          axisTicks: {
+            color: isDark ? '#374151' : '#E5E7EB'
+          }
+        },
+        grid: {
+          borderColor: isDark ? '#374151' : '#E5E7EB',
+        }
+      }, false, false);
+    }
+  }
+  
+  // Função para inicializar gráficos
+  function initCharts() {
+    chartDist = new ApexCharts(document.querySelector('#chartDist'), optsDist);
+    chartDist.render();
+    
+    chartCrit = new ApexCharts(document.querySelector('#chartCrit'), optsCrit);
+    chartCrit.render();
+    
+    // Atualizar tema inicial
+    updateChartsTheme();
+  }
+
+  // Função de atualização
+  let raf;
+  function updateAll(){
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(()=>{
+      const h  = +sliders.h.value;
+      const d  = +sliders.d.value;
+      const v  = +sliders.v.value;
+      const RH = +sliders.rh.value/100;
+      const T  = +sliders.t.value;
+
+      // Atualiza valores dos labels
+      const hLabel = document.getElementById(labels.h);
+      const dLabel = document.getElementById(labels.d);
+      const vLabel = document.getElementById(labels.v);
+      const rhLabel = document.getElementById(labels.rh);
+      const tLabel = document.getElementById(labels.t);
+      
+      // Adicionar classe de animação e remover após um curto período
+      const animateValue = (elem) => {
+        elem.classList.add('pulse-value');
+        setTimeout(() => elem.classList.remove('pulse-value'), 500);
+      };
+      
+      if (hLabel.textContent !== h.toFixed(2)) {
+        hLabel.textContent = h.toFixed(2);
+        animateValue(hLabel);
+      }
+      
+      if (dLabel.textContent !== d.toString()) {
+        dLabel.textContent = d;
+        animateValue(dLabel);
+      }
+      
+      if (vLabel.textContent !== v.toFixed(1)) {
+        vLabel.textContent = v.toFixed(1);
+        animateValue(vLabel);
+      }
+      
+      if (rhLabel.textContent !== (RH*100).toFixed(0)) {
+        rhLabel.textContent = (RH*100).toFixed(0);
+        animateValue(rhLabel);
+      }
+      
+      if (tLabel.textContent !== T.toFixed(1)) {
+        tLabel.textContent = T.toFixed(1);
+        animateValue(tLabel);
+      }
+
+      // Calcula distância e crítico
+      const dist = distHoriz(h,v,d);
+      const crit = Math.round(findCrit(T,RH,h,v));
+
+      // Atualiza gráfico de distância
+      chartDist.updateSeries([dist]);
+
+      // Atualiza valor mostrado do diâmetro crítico
+      const critValueEl = document.getElementById('critValue');
+      if (critValueEl.textContent !== crit + ' µm') {
+        critValueEl.textContent = crit + ' µm';
+        animateValue(critValueEl);
+      }
+      
+      // Atualiza gráfico crítico com a linha pontilhada
+      const isDark = document.documentElement.classList.contains('dark');
+      chartCrit.updateOptions({
+        annotations: {
+          xaxis: [{
+            x: crit,
+            borderColor: isDark ? '#D1D5DB' : '#4B5563',
+            strokeDashArray: 4,
+            strokeWidth: 2,
+            label: {
+              text: String(crit),
+              style: { 
+                background: isDark ? '#1F2937' : '#FFFFFF',
+                color: isDark ? '#D1D5DB' : '#4B5563',
+                fontWeight: 'bold',
+                fontSize: '12px',
+                padding: {
+                  left: 8,
+                  right: 8,
+                  top: 2,
+                  bottom: 2
+                }
+              },
+              position: 'top',
+              offsetY: -15
+            }
+          }]
+        }
+      }, false, false);
+    });
+  }
+
+  // Função para capturar mudanças de tema e atualizar gráficos
+  function setupThemeChangeListener() {
+    // Observador para alterações de classe no elemento html
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          updateChartsTheme();
+          // Também atualiza o gradiente do slider de diâmetro
+          applySliderGradient();
+          // Força atualização dos valores para atualizar as anotações do gráfico
+          updateAll();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    // Adicionar listener para o botão de alternar tema
+    document.getElementById('toggleTheme').addEventListener('click', () => {
+      updateChartsTheme();
+    });
+  }
+
+  // Inicialização
+  window.addEventListener('DOMContentLoaded', () => {
+    initCharts();
+    createSliderAxis('axisD', 9, 0, 800);
+    applySliderGradient();
+    renderLegendSlider();
+    setupThemeChangeListener();
+    
+    // Adicionar eventos de input aos sliders
+    Object.values(sliders).forEach(s => {
+      s.addEventListener('input', updateAll);
+      
+      // Adicionar efeito hover
+      s.addEventListener('mouseover', () => {
+        s.style.boxShadow = '0 0 0 3px rgba(93, 92, 222, 0.2)';
+      });
+      
+      s.addEventListener('mouseout', () => {
+        s.style.boxShadow = 'none';
+      });
+    });
+    
+    updateAll();
+  });
+  </script>
+</body>
+</html>

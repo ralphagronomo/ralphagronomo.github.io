@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Análise da Qualidade das Pontas de Pulverização</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+      line-height: 1.6;
+    }
+    h2 {
+      text-align: center;
+      color: #4CAF50;
+    }
+    .slider-container {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .slider-container label {
+      display: inline-block;
+      width: 160px;
+      font-weight: bold;
+    }
+    .slider-container input[type=range] {
+      width: 100%;
+      margin: 10px 0;
+      -webkit-appearance: none;
+      height: 12px;
+      background: #ddd;
+      border-radius: 5px;
+      border: 1px solid #000; /* Borda fina preta */
+    }
+    .slider-container input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #4CAF50;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    #chart, #pieChart {
+      width: 100%;
+      height: 400px;
+      margin-bottom: 30px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    footer {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 20px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Análise da Qualidade das Pontas de Pulverização</h2>
+
+  <div class="slider-container">
+    <label for="meanSlider">DMV (μm):</label>
+    <input type="range" id="meanSlider" min="0" max="1000" step="1" value="5">
+    <span id="meanValue">5</span>
+  </div>
+
+  <div class="slider-container">
+    <label for="varSlider">Variância (σ²):</label>
+    <input type="range" id="varSlider" min="0" max="300000" step="1" value="8">
+  </div>
+
+  <p style="text-align:center;">SPAN = <span id="spanValue"></span></p>
+
+  <div id="chart"></div>
+  <div style="text-align: left;">
+    <div id="pieChart" style="display:inline-block;"></div>
+  </div>
+
+  <footer>
+    Aplicativo desenvolvido pelo Eng. Agr. Ralph Rabelo Andrade, 2025. Todos os direitos reservados.
+  </footer>
+
+  <script>
+    // --- Gamma e PDF ---
+    function gamma(z) {
+      const g=7, p=[0.99999999999980993,676.5203681218851,-1259.1392167224028,
+        771.32342877765313,-176.61502916214059,12.507343278686905,
+        -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+      if(z<0.5) return Math.PI/(Math.sin(Math.PI*z)*gamma(1-z));
+      z-=1; let x=p[0];
+      for(let i=1;i<p.length;i++) x+=p[i]/(z+i);
+      const t=z+g+0.5;
+      return Math.sqrt(2*Math.PI)*t**(z+0.5)*Math.exp(-t)*x;
+    }
+    function gammaPDF(x,α,β){
+      return x<0?0:x**(α-1)*Math.exp(-x/β)/(gamma(α)*β**α);
+    }
+
+    function buildData(mean,variance){
+      const v=variance<=0?1e-6:variance;
+      const α=mean*mean/v, β=mean<=0?1e-6:v/mean;
+      const N=200, xmax=1000, dx=xmax/N;
+      const xs=[], ys=[];
+      for(let i=0;i<=N;i++){
+        const x=i*dx;
+        xs.push(x);
+        ys.push(gammaPDF(x,α,β));
+      }
+      return { xs, ys };
+    }
+
+    function computeStats(xs,ys){
+      const N=xs.length, dx=xs[1]-xs[0];
+      let cum=0;
+      const cdf=ys.map(y=>(cum+=y*dx, cum));
+      const total=cdf[N-1];
+      for(let i=0;i<N;i++) cdf[i]/=total;
+      function quantile(p){
+        for(let i=0;i<N;i++) if(cdf[i]>=p) return xs[i];
+        return xs[N-1];
+      }
+      return { p10:quantile(0.1), p50:quantile(0.5), p90:quantile(0.9), cdf };
+    }
+
+    function varianceFromMean(m){
+      const mm=Math.max(m,1e-6);
+      return 23944.47 * mm**(-0.302);
+    }
+
+    function updateAll(){
+      const m=+meanSlider.value;
+      const v=+varSlider.value;
+      meanValue.textContent = m;
+
+      const { xs, ys } = buildData(m,v);
+      const { p10,p50,p90,cdf } = computeStats(xs,ys);
+
+      const dx = xs[1]-xs[0];
+      const i50 = Math.min(Math.floor(50/dx), xs.length-1);
+      const i140 = Math.min(Math.floor(140/dx), xs.length-1);
+      const evapP = cdf[i50];
+      const derivaP = cdf[i140] - evapP;
+      const corrP = Math.max(0,1-evapP-derivaP);
+      const span = (p90-p10)/(p50||1e-6);
+      spanValue.textContent = span.toFixed(3);
+
+      const xsEv=[], ysEv=[], xsDr=[], ysDr=[];
+      xs.forEach((x,i)=>{
+        if(x<=50){ xsEv.push(x); ysEv.push(ys[i]); }
+        if(x>=50 && x<=140){ xsDr.push(x); ysDr.push(ys[i]); }
+      });
+      const maxY = Math.max(...ys)*1.1;
+
+      const classifications=[
+        {x0:0, x1:140.36, fill:'rgba(255,0,0,0.2)'},
+        {x0:140.36, x1:253.7, fill:'rgba(255,165,0,0.2)'},
+        {x0:253.7, x1:369.99, fill:'rgba(255,255,0,0.2)'},
+        {x0:369.99, x1:426.55, fill:'rgba(0,0,255,0.2)'},
+        {x0:426.55, x1:515.22, fill:'rgba(0,128,0,0.2)'},
+        {x0:515.22, x1:686.87, fill:'rgba(255,255,255,0.5)'},
+        {x0:686.87, x1:1000, fill:'rgba(0,0,0,0.2)'}
+      ];
+      const shapes = classifications.map(c=>({
+        type:'rect', x0:c.x0, x1:c.x1, y0:0, y1:maxY,
+        fillcolor:c.fill, line:{width:0}, layer:'below'
+      }));
+      shapes.push({
+        type:'line', x0:m, x1:m, y0:0, y1:maxY,
+        line:{dash:'dash',color:'black',width:2}
+      });
+
+      const traceEv = {
+        x:xsEv, y:ysEv, mode:'lines', fill:'tozeroy',
+        fillcolor:'rgba(255,0,0,0.4)', line:{color:'red'}
+      };
+      const traceDr = {
+        x:xsDr, y:ysDr, mode:'lines', fill:'tozeroy',
+        fillcolor:'rgba(255,255,0,0.4)', line:{color:'orange'}
+      };
+      const tracePDF = {
+        x:xs, y:ys, mode:'lines', line:{color:'steelblue'}
+      };
+
+      const layoutPDF = {
+        shapes,
+        margin:{t:20,l:50,b:100,r:20},
+        showlegend:false,
+        xaxis:{
+          range:[0,1000],
+          tickmode:'array',
+          tickvals:[70.18,197.03,311.845,398.27,470.885,601.045,843.435],
+          ticktext:[
+            '<b>Muito<br>Finas</b>',
+            '<b>Finas</b>',
+            '<b>Médias</b>',
+            '<b>Grossas</b>',
+            '<b>Muito<br>Grossas</b>',
+            '<b>Extremamente<br>Grossas</b>',
+            '<b>Ultra<br>Grossas</b>'
+          ],
+          tickfont:{size:12},
+          tickangle:0,
+          title:''
+        },
+        yaxis: { showticklabels: false } // Ocultar valores do eixo Y
+      };
+
+      Plotly.react('chart',[traceEv,traceDr,tracePDF],layoutPDF,{displayModeBar:false});
+
+      // Adicionando o valor do DMV acima da linha pontilhada
+      const annotations = [{
+        x: m,
+        y: maxY * 0.95, // Posição acima da linha
+        text: `${m} μm`,
+        showarrow: true,
+        arrowhead: 2,
+        ax: 0,
+        ay: -40,
+        font: { color: 'black' }
+      }];
+
+      Plotly.addTraces('chart', {
+        type: 'scatter',
+        x: [m],
+        y: [maxY * 0.95],
+        mode: 'text',
+        text: [`${m} μm`],
+        textposition: 'top center',
+        showlegend: false,
+        marker: { size: 0 }
+      });
+
+      const pieData = [{
+        values:[evapP,derivaP,corrP],
+        labels:['Potencial de Evaporação','Potencial de Deriva','Aplicação Correta'],
+        marker:{colors:['red','yellow','green']},
+        type:'pie', textinfo:'percent', texttemplate:'%{percent:.1%}',
+        hoverinfo:'label+percent', sort:false
+      }];
+      const layoutPie = {
+        margin:{t:20,b:20,l:100,r:20},
+        legend:{
+          x:0.01, y:0.5,
+          font:{size:16}
+        }
+      };
+      Plotly.react('pieChart',pieData,layoutPie,{displayModeBar:false});
+    }
+
+    const meanSlider = document.getElementById('meanSlider');
+    const varSlider  = document.getElementById('varSlider');
+    const meanValue  = document.getElementById('meanValue');
+    const spanValue  = document.getElementById('spanValue');
+
+    const grad = [
+      'red 0%','red 14.036%','orange 14.036%','orange 25.37%',
+      'yellow 25.37%','yellow 36.999%','blue 36.999%','blue 42.655%',
+      'green 42.655%','green 51.522%','white 51.522%','white 68.687%',
+      'black 68.687%','black 100%'
+    ].join(',');
+    meanSlider.style.background = 'linear-gradient(to right,'+grad+')';
+
+    function onMeanChange(){
+      const m=+meanSlider.value;
+      const newV=varianceFromMean(m);
+      varSlider.value = Math.min(varSlider.max, Math.max(varSlider.min, newV));
+      updateAll();
+    }
+    function onVarChange(){
+      updateAll();
+    }
+
+    meanSlider.addEventListener('input', onMeanChange);
+    varSlider.addEventListener('input', onVarChange);
+
+    onMeanChange();
+  </script>
+</body>
+</html>

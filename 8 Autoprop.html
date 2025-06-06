@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestão de Pulverização - Catálogo Flexível</title>
+  <style>
+    body { font-family:'Segoe UI',Arial,sans-serif; margin:0; background:#f6f6f3; color:#222; }
+    .main-app {
+      display:flex; gap:33px; align-items:flex-start;
+      width:1130px; min-height:700px; margin:32px auto;
+      padding:32px 26px 36px 32px;
+      background:#fffefc; border-radius:34px;
+      box-shadow:0 10px 34px #2222;
+    }
+    .left-panel, .right-panel {
+      display:flex; flex-direction:column; gap:25px;
+    }
+    .left-panel { flex:0 0 400px; min-width:380px; }
+    .fieldset-root {
+      background:#f9f9f7; border:2px solid #bbb;
+      border-radius:20px; padding:18px;
+      box-shadow:0 2px 5px #aaa1;
+    }
+    .fieldset-root legend {
+      font-weight:bold; font-size:1.13em; padding:0 7px;
+    }
+    .inputs-agrupadas { display:flex; flex-direction:column; gap:16px; }
+    .input-row { display:flex; gap:19px; align-items:center; }
+    .input-field { flex:1; min-width:138px; }
+    label { font-weight:540; font-size:.99em; }
+    select, input[type=range], input[type=number], input[type=text] {
+      width:95%; padding:4.5px; font-size:1em;
+      border:1.3px solid #bbb; border-radius:7px;
+      background:#fff; box-shadow:0 1px 2px #bbb1;
+      outline:none; margin-top:2px; margin-bottom:3px;
+    }
+    input[type=range] { width:95%; }
+
+    /* abas */
+    .tabs {
+      display:flex; gap:8px; margin-bottom:16px;
+      border-bottom:2px solid #ccc; position:relative; z-index:20;
+    }
+    .tab-btn {
+      padding:8px 16px; background:#f9f9f7;
+      border:2px solid transparent; cursor:pointer;
+      font-weight:600; border-top-left-radius:6px;
+      border-top-right-radius:6px; transition:.2s;
+    }
+    .tab-btn.active {
+      background:#fff; border-color:#bbb;
+      border-bottom-color:#fff;
+    }
+    .tab-content { display:none; position:relative; z-index:10; }
+    .tab-content.active { display:block; }
+    /* catálogo sobreponha */
+    #catalogo.tab-content.active { z-index:50; }
+
+    /* semáforo */
+    .semaforo-box {
+      display:flex; align-items:center; gap:17px;
+      background:#f8f8ea; border:2.2px solid #dadadc;
+      border-radius:18px; padding:14px 12px 12px 18px;
+      box-shadow:0 2px 7px #dadaea23;
+    }
+    .semaforo-display {
+      width:51px; height:120px; background:#313338;
+      border:2px solid #383C4F; border-radius:14px;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:11px;
+      padding:11px 0; box-shadow:inset 0 4px 17px #29243918;
+    }
+    .semaforo-luz {
+      width:30px; height:30px; border-radius:50%;
+      border:2.8px solid #222; background:#999;
+      box-shadow:inset 0 2.5px 9px #3338; transition:.2s;
+    }
+    .semaforo-luz.off { filter:grayscale(1) brightness(.82); }
+    .semaforo-luz.red { background:#d9143c; }
+    .semaforo-luz.yellow { background:#ffe239; }
+    .semaforo-luz.green { background:#39c632; }
+    .semaforo-mensagem {
+      font-size:1.01em; line-height:1.38; font-weight:540; color:#1b1b13;
+    }
+
+    /* gráfico de barras */
+    .grades-container {
+      position:relative; height:120px;
+      border-radius:21px; background:#fafafb;
+      border:2.2px solid #bdbdbd; box-shadow:inset 0 2px 12px #ccc8;
+      display:flex; align-items:flex-end; margin-bottom:2px;
+    }
+    #barsPlot { width:620px; height:120px; }
+    .bar-legend { display:flex; gap:13px; flex-wrap:wrap; }
+    .bar-leg-box {
+      width:28px; height:12px; display:inline-block;
+      border:1.3px solid #423e1b; border-radius:6px;
+      box-shadow:inset 0 2px 4px #aaa8;
+    }
+    .bar-leg-label {
+      font-size:1em; font-weight:bold; color:#242424;
+      vertical-align:middle; margin-left:4px;
+    }
+    .indicador-valor {
+      position:absolute; z-index:3;
+      padding:.49em .67em .37em .67em;
+      font-size:.9em; text-align:center; font-weight:600;
+      background:#fff; border:1.8px solid #333; border-radius:16px;
+      box-shadow:0 1px 4px #fff7; transition:left .13s,top .13s;
+    }
+    .indicador-valor.velocidade {
+      border:1.7px solid #111; box-shadow:0 1px 4px #eee7;
+    }
+    .indicador-topo { top:-46px !important; }
+    .indicador-fundo { bottom:-44px !important; top:auto !important; }
+
+    /* velocímetros e resumo */
+    .velocs-wrap { display:flex; gap:23px; }
+    .veloc-section {
+      background:#fafafa; padding:14px 13px 22px 12px;
+      border-radius:18px; box-shadow:inset 0 2px 12px #b0b1b47c;
+      flex:1; min-width:225px; position:relative;
+    }
+    .veloc-subtitle {
+      font-size:1.15em; font-weight:600; text-align:center; color:#181818;
+    }
+    .alerta {
+      background:#fff5f5; color:#a90018; padding:7px 13px;
+      font-weight:bold; border:2px solid #d9143f55;
+      border-radius:10px; box-shadow:inset 0 2px 5px #d9143f15;
+      margin-top:5px; font-size:1.05em;
+    }
+    .resumo-box {
+      background:#f9f9f7; border-radius:14px; padding:14px 18px 10px 15px;
+      box-shadow:inset 0 2px 9px #eee3; font-size:1.08em; line-height:1.45em;
+    }
+
+    @media (max-width:760px){
+      .main-app { flex-direction:column; width:99vw; }
+      #barsPlot { width:100%; }
+      .tabs { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <!-- ESQUERDA: abas + semáforo -->
+    <div id="entradas-pulverizacao" class="left-panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="dados">Dados Gerais</button>
+        <button class="tab-btn" data-tab="catalogo">Catálogo</button>
+      </div>
+      <div id="dados" class="tab-content active">
+        <fieldset class="fieldset-root">
+          <legend>Entradas da Pulverização</legend>
+          <div class="inputs-agrupadas">
+            <div class="input-row">
+              <div class="input-field">
+                <label>Vazão da ponta (gal/min):</label>
+                <select id="nozzleFlow"></select>
+                <span id="nozzleColorBox"></span>
+              </div>
+              <div class="input-field">
+                <label>Distância entre bicos (cm): <span id="valDist"></span></label>
+                <input type="range" id="nozzleDist" min="0" max="100" step="1">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-field">
+                <label>Taxa de Aplicação (L/ha): <span id="valAppRate"></span></label>
+                <input type="range" id="applicationRate" min="0" max="200" step="1">
+              </div>
+              <div class="input-field">
+                <label>Índice de Área Foliar (IAF): <span id="valIaf"></span></label>
+                <!-- IAF agora varia de 1 a 5 -->
+                <input type="range" id="iaf" min="1" max="5" step="0.1" value="1.8">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-field">
+                <label>Velocidade (km/h): <span id="valVelocity"></span></label>
+                <input type="range" id="velocity" min="0" max="30" step="0.1">
+              </div>
+            </div>
+          </div>
+        </fieldset>
+        <div id="semaforoArea" class="semaforo-box"></div>
+      </div>
+      <div id="catalogo" class="tab-content">
+        <fieldset class="fieldset-root">
+          <legend>Catálogo da ponta de pulverização</legend>
+          <div class="input-row" style="margin-bottom:7px;">
+            <div class="input-field"><label>Fabricante:</label><input type="text" id="manufacturer" value="MICRON"></div>
+            <div class="input-field"><label>Modelo:</label><input type="text" id="model" value="DBX AIR 11002"></div>
+            <div class="input-field"><label>Ângulo (°):</label><input type="number" id="angle" value="110"></div>
+            <div class="input-field">
+              <label>Vazão cat. (gal/min):</label>
+              <input type="number" id="catFlow" step="0.01" min="0">
+            </div>
+          </div>
+          <label>Pressão por classe:</label>
+          <div class="add-class-row">
+            <select id="addClassSelect"></select>
+            <button type="button" id="addClassBtn">Adicionar Classe</button>
+          </div>
+          <div style="margin:5px 0;">
+            Unidade de pressão:
+            <select id="pressUnit" style="width:88px;">
+              <option value="psi">PSI</option><option value="bar">Bar</option>
+            </select>
+            <span id="pressaoAviso" style="color:#7b4606;font-size:.93em;"></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="catalogo-press-table" style="width:100%;max-width:395px;">
+              <thead><tr><th>Classe</th><th>Início</th><th>Final</th><th></th></tr></thead>
+              <tbody id="classPressTbody"></tbody>
+            </table>
+          </div>
+        </fieldset>
+      </div>
+    </div>
+
+    <!-- DIREITA: gráficos e velocímetros -->
+    <div class="right-panel output-panel">
+      <div>
+        <div style="font-size:1.11em;font-weight:600;color:#444;margin-bottom:2px;">
+          Distribuição das classes de gotas conforme pressão de trabalho
+        </div>
+        <div class="grades-container">
+          <canvas id="barsPlot" width="620" height="120"></canvas>
+          <div id="indicadorPressao" class="indicador-valor indicador-topo"></div>
+          <div id="indicadorVelocidade" class="indicador-valor velocidade indicador-fundo"></div>
+        </div>
+        <div class="bar-legend" id="barLegend"></div>
+      </div>
+      <div class="velocs-wrap">
+        <div class="veloc-section">
+          <div class="veloc-subtitle">Densidade de gotas (gotas/cm²)</div>
+          <canvas id="velocimeter1" width="245" height="202"></canvas>
+          <div id="alertaDensidade"></div>
+        </div>
+        <div class="veloc-section">
+          <div class="veloc-subtitle">Cobertura (%)</div>
+          <canvas id="velocimeter2" width="245" height="202"></canvas>
+          <div id="alertaCobertura"></div>
+        </div>
+      </div>
+      <div class="resumo-box" id="textOutput"></div>
+    </div>
+  </div>
+
+  <script>
+    // dados fixos
+    const classesGotas = [
+      { nome:"Ultra Grossa", sigla:"UG", cor:"#000", dens:[2,4], cobertura:[1.2,1.4] },
+      { nome:"Extremamente Grossa", sigla:"EG", cor:"#FFF", dens:[4,9], cobertura:[1.4,1.8] },
+      { nome:"Muito Grossa", sigla:"MG", cor:"#0A6", dens:[9,16], cobertura:[1.8,2.2] },
+      { nome:"Grossa", sigla:"G", cor:"#06B", dens:[16,24], cobertura:[2.2,2.6] },
+      { nome:"Média", sigla:"M", cor:"#FE1", dens:[24,74], cobertura:[2.6,3.7] },
+      { nome:"Fina", sigla:"F", cor:"#F93", dens:[74,436], cobertura:[3.7,6.7] },
+      { nome:"Muito Fina", sigla:"MF", cor:"#D14", dens:[436,2000], cobertura:[6.7,30] }
+    ];
+    const classEditOrder = ["Ultra Grossa","Extremamente Grossa","Muito Grossa","Grossa","Média","Fina","Muito Fina"];
+    const nozzleOptions = [
+      {name:"0.05",flow:0.05,color:"#76689a"},{name:"0.067",flow:0.067,color:"#50533c"},
+      {name:"0.075",flow:0.075,color:"#d8a0a6"},{name:"0.1",flow:0.1,color:"#e25303"},
+      {name:"0.15",flow:0.15,color:"#008351"},{name:"0.2",flow:0.2,color:"#faca30"},
+      {name:"0.25",flow:0.25,color:"#844c82"},{name:"0.3",flow:0.3,color:"#004f7c"},
+      {name:"0.35",flow:0.35,color:"#6b1c23"},{name:"0.4",flow:0.4,color:"#a72920"},
+      {name:"0.5",flow:0.5,color:"#5a3826"},{name:"0.6",flow:0.6,color:"#9b9b9b"},
+      {name:"0.8",flow:0.8,color:"#f1f0ea"},{name:"1.0",flow:1.0,color:"#0089b6"},
+      {name:"1.2",flow:1.2,color:"#ab273c"},{name:"1.4",flow:1.4,color:"#a08f65"},
+      {name:"1.5",flow:1.5,color:"#61993b"},{name:"1.6",flow:1.6,color:"#a45729"},
+      {name:"1.8",flow:1.8,color:"#007577"}
+    ];
+
+    // elementos
+    const nozzleSelect = document.getElementById('nozzleFlow'),
+          catFlowInput = document.getElementById('catFlow'),
+          nozzleColorBox = document.getElementById('nozzleColorBox'),
+          inputs = {
+            nozzleDist: document.getElementById('nozzleDist'),
+            applicationRate: document.getElementById('applicationRate'),
+            iaf: document.getElementById('iaf'),
+            velocity: document.getElementById('velocity')
+          };
+
+    // popula nozzleFlow e inicializa valores
+    nozzleOptions.forEach(o=>{
+      let opt = document.createElement('option');
+      opt.value = o.flow; opt.textContent = o.name + " gal/min";
+      nozzleSelect.appendChild(opt);
+    });
+    nozzleSelect.value = 0.2;
+    catFlowInput.value = nozzleSelect.value;
+    nozzleColorBox.style.background = nozzleOptions.find(o=>o.flow==nozzleSelect.value).color;
+
+    inputs.nozzleDist.value = 50;
+    inputs.applicationRate.value = 100;
+    inputs.iaf.value = 1.8;
+    inputs.velocity.value = 8;
+
+    function atualizaLabels(){
+      document.getElementById('valDist').textContent   = inputs.nozzleDist.value + " cm";
+      document.getElementById('valAppRate').textContent= inputs.applicationRate.value + " L/ha";
+      document.getElementById('valIaf').textContent    = inputs.iaf.value;
+      document.getElementById('valVelocity').textContent= inputs.velocity.value + " km/h";
+      nozzleColorBox.style.background = nozzleOptions[nozzleSelect.selectedIndex].color;
+    }
+
+    // catálogo pressão
+    let pressCatalogPSI = [
+      {classe:"Muito Grossa",ini:30,fim:52.5},
+      {classe:"Grossa",ini:52.5,fim:100}
+    ], unidadePressao="psi";
+
+    function convertPsiBar(v,to){
+      if(to==='bar') return +(v/14.5038).toFixed(3);
+      if(to==='psi') return +(v*14.5038).toFixed(2);
+      return v;
+    }
+    function pressView(){
+      return pressCatalogPSI.map(r=>({
+        classe: r.classe,
+        ini: unidadePressao==='psi'? r.ini : convertPsiBar(r.ini,'bar'),
+        fim: unidadePressao==='psi'? r.fim : convertPsiBar(r.fim,'bar')
+      }));
+    }
+
+    // tabela catálogo
+    const tbody = document.getElementById('classPressTbody');
+    function fillPressTable(){
+      tbody.innerHTML = '';
+      pressView().forEach(r=>{
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.classe}</td>
+          <td><input type="number" step="0.1" min="0" value="${r.ini}"
+            data-cl="${r.classe}" data-fld="ini" style="width:63px"></td>
+          <td><input type="number" step="0.1" min="0" value="${r.fim}"
+            data-cl="${r.classe}" data-fld="fim" style="width:63px"></td>
+          <td><button type="button" class="remover-classe-btn" data-cl="${r.classe}">×</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('input',()=>{
+          let cl=inp.dataset.cl, fld=inp.dataset.fld, val=Number(inp.value);
+          if(unidadePressao==='bar') val = convertPsiBar(val,'psi');
+          pressCatalogPSI.find(x=>x.classe===cl)[fld] = val;
+          atualizarTudo();
+        });
+      });
+      tbody.querySelectorAll('.remover-classe-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          pressCatalogPSI = pressCatalogPSI.filter(x=>x.classe!==btn.dataset.cl);
+          popularAddClassSelect(); fillPressTable(); atualizarTudo();
+        });
+      });
+    }
+    function popularAddClassSelect(){
+      let sel = document.getElementById('addClassSelect');
+      sel.innerHTML = '';
+      classEditOrder.forEach(nome=>{
+        if(!pressCatalogPSI.some(x=>x.classe===nome)){
+          let o = document.createElement('option');
+          o.value = nome; o.textContent = nome;
+          sel.appendChild(o);
+        }
+      });
+    }
+    document.getElementById('addClassBtn').addEventListener('click',()=>{
+      let sel = document.getElementById('addClassSelect');
+      if(!sel.value) return;
+      let pv = pressView(), lastFim = pv.length? pv[pv.length-1].fim : 20;
+      let ini = unidadePressao==='psi'? lastFim : convertPsiBar(lastFim,'psi'),
+          fim = ini + 10;
+      if(unidadePressao==='bar'){
+        ini = convertPsiBar(ini,'psi');
+        fim = convertPsiBar(fim,'psi');
+      }
+      pressCatalogPSI.push({classe:sel.value, ini, fim});
+      popularAddClassSelect(); fillPressTable(); atualizarTudo();
+    });
+    document.getElementById('pressUnit').addEventListener('change',e=>{
+      unidadePressao = e.target.value;
+      document.getElementById('pressaoAviso').textContent =
+        unidadePressao==='psi'? 'Valores em PSI':'Valores em Bar';
+      fillPressTable(); atualizarTudo();
+    });
+
+    // cálculos
+    function calculaPressao(dist,taxa,flow,vel){
+      return Math.pow((vel*taxa*dist)/(60000*(flow*3.785412)),2)*40;
+    }
+    function determinaClasse(psi){
+      let p = unidadePressao==='psi'? psi : convertPsiBar(psi,'bar'),
+          pc = pressView();
+      for(let r of pc) if(p>=r.ini && p<r.fim) return r.classe;
+      if(p<pc[0].ini) return pc[0].classe;
+      return pc[pc.length-1].classe;
+    }
+    function dadosClasse(n){ return classesGotas.find(c=>c.nome===n)||{}; }
+
+    // semáforo
+    function desenhaSemaforo(psi){
+      let p = unidadePressao==='psi'? psi : convertPsiBar(psi,'bar'),
+          pc=pressView(), min=pc[0].ini, max=pc[pc.length-1].fim;
+      let cor='green', msg='Parabéns, aplicação perfeita!';
+      if(p<min){ cor='red'; msg='Pressão abaixo do mínimo.'; }
+      else if(p>max){ cor='red'; msg='Pressão acima do máximo.'; }
+      else if((unidadePressao==='psi'&&p>=60)||(unidadePressao==='bar'&&p>=4)){
+        cor='yellow'; msg='Limite seguro atingido.'; }
+      document.getElementById('semaforoArea').innerHTML = `
+        <div class="semaforo-display">
+          <div class="semaforo-luz ${cor==='red'?'red':'off'}"></div>
+          <div class="semaforo-luz ${cor==='yellow'?'yellow':'off'}"></div>
+          <div class="semaforo-luz ${cor==='green'?'green':'off'}"></div>
+        </div>
+        <div class="semaforo-mensagem">${msg}</div>`;
+    }
+
+    // barras
+    function desenhaBarraClassesCustom(ctx,pc,psi){
+      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+      const x0=30, L=ctx.canvas.width-2*x0, y0=22, h=55;
+      const minpsi=pc[0].ini-4, maxpsi=pc[pc.length-1].fim+4, total=maxpsi-minpsi;
+      let legends=[];
+      pc.forEach(c=>{
+        let cor=dadosClasse(c.classe).cor||'#ccc';
+        let xi=x0+((c.ini-minpsi)/total)*L,
+            xf=x0+((c.fim-minpsi)/total)*L;
+        ctx.globalAlpha=.94; ctx.fillStyle=cor; ctx.fillRect(xi,y0,xf-xi,h);
+        ctx.globalAlpha=1; ctx.strokeStyle='#454545'; ctx.lineWidth=2.1;
+        ctx.strokeRect(xi,y0,xf-xi,h);
+        legends.push({nome:c.classe,cor});
+      });
+      let p = unidadePressao==='psi'? psi : convertPsiBar(psi,'bar'),
+          x_pt = x0+((p-minpsi)/total)*L;
+      ctx.save(); ctx.setLineDash([5,6]); ctx.strokeStyle='#000'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(x_pt,y0-14); ctx.lineTo(x_pt,y0+h+27); ctx.stroke();
+      ctx.restore();
+      return {legends,x_pt,x0,L};
+    }
+
+    // velocímetros
+    function desenhaVelocimetroEscalaClean(cv,min,max,val,ticks){
+      const ctx=cv.getContext('2d'), w=cv.width, h=cv.height;
+      ctx.clearRect(0,0,w,h);
+      const cx=w/2, cy=h/2+10, r=72;
+      const start=112.5*Math.PI/180, end=427.5*Math.PI/180;
+      // arco
+      ctx.beginPath(); ctx.arc(cx,cy,r,start,end);
+      ctx.lineWidth=15; ctx.strokeStyle='#e1e1e1'; ctx.stroke(); ctx.closePath();
+      // ticks
+      ctx.font='bold 13px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ticks.forEach((v,i)=>{
+        const a=start+((v-min)/(max-min))*(end-start);
+        const x1=cx+Math.cos(a)*(r+2), y1=cy+Math.sin(a)*(r+2),
+              x2=cx+Math.cos(a)*(r-13), y2=cy+Math.sin(a)*(r-13);
+        ctx.beginPath(); ctx.strokeStyle='#575757';
+        ctx.lineWidth=2.1-(i===0||i===ticks.length-1?0.5:0);
+        ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        ctx.fillStyle='#242424'; ctx.font='500 14px Segoe UI';
+        ctx.fillText(v, cx+Math.cos(a)*(r+18), cy+Math.sin(a)*(r+18)+1);
+      });
+      // ponteiro
+      const rel=Math.max(0,Math.min(1,(val-min)/(max-min))),
+            a=start+rel*(end-start);
+      ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*18,cy+Math.sin(a)*18);
+      ctx.lineTo(cx+Math.cos(a)*(r-22),cy+Math.sin(a)*(r-22));
+      ctx.strokeStyle='#191919'; ctx.lineWidth=2.3; ctx.stroke();
+      // setas
+      [Math.PI/10,-Math.PI/10].forEach(ang=>{
+        ctx.beginPath();
+        const x2=cx+Math.cos(a)*(r-22), y2=cy+Math.sin(a)*(r-22);
+        ctx.moveTo(x2,y2);
+        ctx.lineTo(x2-Math.cos(a+ang)*10, y2-Math.sin(a+ang)*10);
+        ctx.stroke();
+      });
+      // disco e valor
+      ctx.beginPath(); ctx.arc(cx,cy,31,0,2*Math.PI);
+      ctx.fillStyle='#fff'; ctx.shadowColor='#e1e1e1'; ctx.shadowBlur=11; ctx.fill();
+      ctx.shadowBlur=0; ctx.lineWidth=3; ctx.strokeStyle='#bbb'; ctx.stroke();
+      ctx.font='bold 1.4em Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='#222'; ctx.fillText(val.toFixed(1),cx,cy-2);
+    }
+
+    function renderizaLegendaBarra(legends){
+      document.getElementById('barLegend').innerHTML =
+        legends.map(l=>`
+          <div>
+            <span class="bar-leg-box" style="background:${l.cor};"></span>
+            <span class="bar-leg-label">${l.nome}</span>
+          </div>
+        `).join('');
+    }
+
+    function renderizaResumo(cl,psi,dg,cb,vel,iaf){
+      if(!cl){
+        document.getElementById('textOutput').innerHTML =
+          '<span style="color:#b00;font-weight:600;">Pressão fora das faixas cadastradas.</span>';
+        return;
+      }
+      const cls = dadosClasse(cl),
+            pval = (unidadePressao==='psi'?psi:convertPsiBar(psi,'bar')).toFixed(2),
+            pr   = unidadePressao==='psi'?'PSI':'Bar',
+            // cobertura ajustada
+            cbMin = (cb[0]/iaf).toFixed(1),
+            cbMax = (cb[1]/iaf).toFixed(1);
+      document.getElementById('textOutput').innerHTML=`
+        <span style="display:inline-block;width:22px;height:13px;background:${cls.cor};
+          border:1.2px solid #333;border-radius:2.3px;margin-right:8px;"></span>
+        <b>${cl}</b> <i>(${cls.sigla})</i><br>
+        Pressão: <b>${pval} ${pr}</b><br>
+        Velocidade: <b>${vel.toFixed(1)} km/h</b><br>
+        Densidade: <b>${dg[0]}–${dg[1]} gotas/cm²</b><br>
+        Cobertura: <b>${cbMin}%–${cbMax}%</b>
+        <div style="color:#797933;font-size:.96em;">Equilibre cobertura e risco.</div>
+      `;
+    }
+
+    function atualizarTudo(){
+      atualizaLabels();
+      // sincronia vazão ponta ↔ cat
+      catFlowInput.value = nozzleSelect.value;
+      let flow = Number(nozzleSelect.value),
+          dist=Number(inputs.nozzleDist.value),
+          taxa=Number(inputs.applicationRate.value),
+          iaf=Number(inputs.iaf.value),
+          vel=Number(inputs.velocity.value),
+          catF=Number(catFlowInput.value);
+      if(catF>=0.01) flow=catF;
+      const psi = calculaPressao(dist,taxa,flow,vel);
+      desenhaSemaforo(psi);
+      const pc = pressView(),
+            ctx = document.getElementById('barsPlot').getContext('2d'),
+            bd  = desenhaBarraClassesCustom(ctx,pc,psi);
+      renderizaLegendaBarra(bd.legends);
+      const cw = document.getElementById('barsPlot').width,
+            xi = Math.max(bd.x0-18, Math.min(cw-56, bd.x_pt-18));
+      document.getElementById('indicadorPressao').style.left = xi+'px';
+      document.getElementById('indicadorPressao').innerHTML = 
+        (unidadePressao==='psi'?psi:convertPsiBar(psi,'bar')).toFixed(2);
+      document.getElementById('indicadorVelocidade').style.left = xi+'px';
+      document.getElementById('indicadorVelocidade').innerHTML = vel.toFixed(1);
+
+      const cl = determinaClasse(psi),
+            dg = dadosClasse(cl).dens||[0,0],
+            cb = dadosClasse(cl).cobertura||[0,0];
+      // valor de cobertura ajustado pelo IAF
+      const cbAvg = (cb[0] + cb[1]) / 2;
+      const cbAdj = +(cbAvg / iaf).toFixed(1);
+
+      desenhaVelocimetroEscalaClean(
+        document.getElementById('velocimeter1'),
+        0,150, Math.round((dg[0]+dg[1])/2),
+        [0,30,60,90,120,150]
+      );
+      desenhaVelocimetroEscalaClean(
+        document.getElementById('velocimeter2'),
+        0,50, cbAdj,
+        [0,10,20,30,40,50]
+      );
+
+      document.getElementById('alertaDensidade').innerHTML = '';
+      document.getElementById('alertaCobertura').innerHTML = '';
+      renderizaResumo(cl,psi,dg,cb,vel,iaf);
+    }
+
+    // eventos
+    nozzleSelect.addEventListener('change', atualizarTudo);
+    Object.values(inputs).forEach(el=>el.addEventListener('input', atualizarTudo));
+    catFlowInput.addEventListener('input', ()=>{
+      nozzleSelect.value = catFlowInput.value;
+      atualizarTudo();
+    });
+    ['manufacturer','model','angle'].forEach(id=>
+      document.getElementById(id).addEventListener('input', atualizarTudo)
+    );
+    document.getElementById('addClassBtn').addEventListener('click', ()=>{});
+    document.getElementById('pressUnit').addEventListener('change', ()=>{});
+    // abas
+    document.querySelectorAll('#entradas-pulverizacao .tab-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('#entradas-pulverizacao .tab-btn')
+          .forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('#entradas-pulverizacao .tab-content')
+          .forEach(c=>c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+    // init
+    popularAddClassSelect();
+    fillPressTable();
+    atualizarTudo();
+  </script>
+</body>
+</html>

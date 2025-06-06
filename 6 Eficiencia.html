@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Eficiência da Aplicação</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#5D5CDE',
+            secondary: '#8D6E63',
+          },
+          boxShadow: {
+            slider: '0 0 0 2px rgba(93, 92, 222, 0.3)',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    input[type=range] {
+      -webkit-appearance:none; width:100%; height:8px; border-radius:8px;
+      outline:none; background:#e5e7eb;
+    }
+    .dark input[type=range] { background:#374151; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+      background:#5D5CDE; border:2px solid white;
+      box-shadow:0 0 2px rgba(0,0,0,0.3); cursor:pointer; transition:all .2s ease;
+    }
+    .dark input[type=range]::-webkit-slider-thumb { border-color:#1f2937; }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform:scale(1.1); box-shadow:0 0 0 4px rgba(93,92,222,0.3);
+    }
+    input[type=range]:active::-webkit-slider-thumb { transform:scale(1.2); }
+
+    .slider-axis { position:relative; height:25px; margin-top:5px; }
+    .slider-axis .tick {
+      position:absolute; bottom:15px; width:1px; height:6px; background:#9ca3af;
+    }
+    .dark .slider-axis .tick { background:#6b7280; }
+    .slider-axis .tick-label {
+      position:absolute; bottom:0; transform:translateX(-50%);
+      font-size:10px; color:#9ca3af;
+    }
+    .pulse-value { animation:pulse 2s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.8} }
+  </style>
+</head>
+<body class="bg-blue-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+  <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-3xl font-bold text-center mb-2 text-primary dark:text-blue-400">
+      Eficiência da Aplicação
+    </h1>
+    <p class="text-center text-gray-600 dark:text-gray-400 mb-8">
+      Elaborado pelo Eng. Agr. Ralph Rabelo Andrade. Todos os direitos reservados.
+    </p>
+
+    <div class="flex flex-wrap lg:flex-nowrap gap-8 justify-start">
+      <!-- CONTROLES -->
+      <div class="w-full lg:w-2/5 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all">
+        <h2 class="text-xl font-semibold mb-4 text-primary dark:text-blue-400">
+          Condições da Aplicação
+        </h2>
+        <div class="space-y-6">
+          <!-- Taxa de Aplicação -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <label class="font-medium">Taxa de Aplicação (L/ha)</label>
+              <span id="txVal" class="font-bold text-primary dark:text-blue-400">100</span>
+            </div>
+            <input type="range" id="tx" min="0" max="200" step="1" value="100"/>
+          </div>
+          <!-- IAF -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <label class="font-medium">Índice de Área Foliar</label>
+              <span id="iafVal" class="font-bold text-primary dark:text-blue-400">3.00</span>
+            </div>
+            <input type="range" id="iaf" min="1" max="5" step="0.01" value="3"/>
+          </div>
+          <!-- DMV -->
+          <div>
+            <div class="flex justify-between mb-1">
+              <label class="font-medium">DMV (µm)</label>
+              <span id="dmvVal" class="font-bold text-primary dark:text-blue-400">500</span>
+            </div>
+            <input type="range" id="dmv" min="0" max="1000" step="1" value="500"/>
+            <div class="slider-axis" id="axisDmv"></div>
+            <div id="legendDmv" class="mt-2 text-xs space-y-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTADOS -->
+      <div class="w-full lg:w-3/5 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all">
+        <h2 class="text-xl font-semibold mb-4 text-primary dark:text-blue-400 text-center">
+          Qualidade da Aplicação
+        </h2>
+        <!-- fundo claro estendido para ambos os charts -->
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div class="flex flex-row gap-8 justify-center items-start">
+            <!-- Densidade -->
+            <div class="flex-1 flex flex-col items-center">
+              <label class="block text-center font-medium mb-2 leading-tight">
+                Densidade de Gotas<br>
+                <span class="text-xs font-normal">(gotas/cm²)</span>
+              </label>
+              <div id="chartDG" class="flex justify-center items-center"></div>
+            </div>
+            <!-- Cobertura -->
+            <div class="flex-1 flex flex-col items-center">
+              <label class="block text-center font-medium mb-2 leading-tight">
+                Cobertura<br>
+                <span class="text-xs font-normal">(%)</span>
+              </label>
+              <div id="chartCo" class="flex justify-center items-center"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-6">
+      <button id="toggleTheme" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+        <span class="dark:hidden">Modo Escuro</span>
+        <span class="hidden dark:inline">Modo Claro</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Modo escuro automático
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+    document.getElementById('toggleTheme').onclick = () => {
+      document.documentElement.classList.toggle('dark');
+      applyDmvGradient();
+    };
+
+    // Classes de gotas
+    const classesGotas = [
+      { nome:'Muito Finas', cor:'#D7143F', limBaixo:0,      limCima:140.36 },
+      { nome:'Finas',       cor:'#F9A03A', limBaixo:140.36, limCima:253.7  },
+      { nome:'Médias',      cor:'#FFE01B', limBaixo:253.7,  limCima:369.99 },
+      { nome:'Grossas',     cor:'#006AB6', limBaixo:369.99, limCima:426.55 },
+      { nome:'Muito Grossas',cor:'#00AB66',limBaixo:426.55, limCima:515.22 },
+      { nome:'Extremamente Grossas',cor:'#FFFFFF',limBaixo:515.22, limCima:686.87 },
+      { nome:'Ultra Grossas',cor:'#000000', limBaixo:686.87, limCima:1000 }
+    ];
+
+    // Referências
+    const tx  = document.getElementById('tx');
+    const iaf = document.getElementById('iaf');
+    const dmv = document.getElementById('dmv');
+    const vals = { tx:'txVal', iaf:'iafVal', dmv:'dmvVal' };
+
+    // Eixo DMV
+    function createSliderAxis(id,ticks,min,max){
+      const wrap = document.getElementById(id);
+      wrap.innerHTML = '';
+      for(let i=0;i<ticks;i++){
+        const pct = i/(ticks-1)*100;
+        const t = document.createElement('div');
+        t.className='tick'; t.style.left=pct+'%'; wrap.appendChild(t);
+        const l = document.createElement('div');
+        l.className='tick-label'; l.style.left=pct+'%';
+        l.textContent = Math.round(min + (max-min)*i/(ticks-1));
+        wrap.appendChild(l);
+      }
+    }
+
+    // Legenda vertical
+    function renderLegend(){
+      const lg = document.getElementById('legendDmv');
+      lg.innerHTML = '';
+      classesGotas.forEach(c=>{
+        const e = document.createElement('div');
+        e.className='flex items-center gap-2';
+        const sw = document.createElement('div');
+        sw.style.background = c.cor;
+        sw.className='w-4 h-2';
+        const txt = document.createElement('span');
+        txt.textContent = c.nome;
+        e.append(sw,txt);
+        lg.appendChild(e);
+      });
+    }
+
+    // Gradiente do slider DMV
+    function applyDmvGradient(){
+      const stops = classesGotas.map(c=>{
+        const start = (c.limBaixo/1000*100).toFixed(3);
+        const end   = (c.limCima/1000*100).toFixed(3);
+        return `${c.cor} ${start}%, ${c.cor} ${end}%`;
+      }).join(', ');
+      dmv.style.background = `linear-gradient(to right, ${stops})`;
+    }
+
+    // Configurações dos velocímetros
+    function optsRadial(color, fmt){
+      return {
+        chart:{ type:'radialBar',
+                offsetY:-10,
+                width: 320, // Aumentado
+                height: 320, // Aumentado
+                sparkline:{enabled:true},
+                background:'transparent',
+                toolbar:{show:false} },
+        plotOptions:{ radialBar:{
+          hollow:{ size:'65%' },
+          track:{ background:'#E5E7EB', strokeWidth:'97%', margin:5 },
+          dataLabels:{
+            name:{ show:false },
+            value:{ show:true, fontSize:'36px', color, formatter:fmt }
+          }
+        }},
+        fill:{ type:'gradient', gradient:{ shade:'dark', gradientToColors:[color], stops:[0,100] } },
+        series:[0]
+      };
+    }
+    let chartDG, chartCo;
+    function initCharts(){
+      chartDG = new ApexCharts(document.querySelector('#chartDG'),
+        optsRadial('#5D5CDE', v => Math.round(v).toString()));
+      chartCo = new ApexCharts(document.querySelector('#chartCo'),
+        optsRadial('#8D6E63', v => v.toFixed(1).toString()));
+      chartDG.render();
+      chartCo.render();
+    }
+
+    // Atualiza tudo
+    function updateAll(){
+      const T = +tx.value, A = +iaf.value, D = +dmv.value;
+      const DG = (6e7 * T) / (A * Math.PI * D**3);
+      const CO = (6 * T) / (A * 40 * D);
+      [['tx',T],['iaf',A],['dmv',D]].forEach(([k,v])=>{
+        const el = document.getElementById(vals[k]);
+        el.textContent = k==='iaf'? v.toFixed(2): v.toFixed(0);
+        el.classList.add('pulse-value');
+        setTimeout(()=>el.classList.remove('pulse-value'),500);
+      });
+      chartDG.updateSeries([DG]);
+      chartCo.updateSeries([CO*100]);
+    }
+
+    // Inicialização
+    window.addEventListener('DOMContentLoaded',()=>{
+      initCharts();
+      createSliderAxis('axisDmv',11,0,1000);
+      renderLegend();
+      applyDmvGradient();
+      [tx, iaf, dmv].forEach(s=> s.addEventListener('input', updateAll));
+      updateAll();
+    });
+  </script>
+</body>
+</html>

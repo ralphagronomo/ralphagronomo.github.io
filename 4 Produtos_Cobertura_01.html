@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Cobertura de Gotas – Agronomia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .dark { background: #1f2937; color: #f3f4f6; }
+    .barra-base {
+      position: relative;
+      height: 28px;
+      border-radius: 8px;
+      background: #f1f1f1;
+      overflow: hidden;
+    }
+    .dark .barra-base { background: #373737; }
+    .barra-destaque {
+      position: absolute;
+      height: 100%;
+      top: 0;
+      border-radius: 8px;
+      background: #7c3aedcc;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 15px;
+      transition: left 0.3s, width 0.3s;
+      text-shadow: 0 1px 3px #28206aab;
+      pointer-events: none;
+      user-select: none;
+    }
+    .barra-ticks-x {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-top: 0.1rem;
+      font-size: 12px;
+      color: #5D5CDE;
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      opacity: 0.9;
+    }
+    .dark .barra-ticks-x { color: #c3c7fb; }
+
+    .barra-classcolor {
+      position: absolute; height: 100%; top: 0; z-index: 1;
+      opacity: 0.3;
+      border-radius: 0;
+    }
+    .barra-classdestaque {
+      position: absolute; height: 100%; top: 0; z-index: 2; 
+      opacity: 1;
+      filter:brightness(1.08) drop-shadow(0 2px 2px rgba(60,0,140,0.06));
+      border-radius: 0;
+    }
+    .rotulo-classes {
+      display: flex;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .rotulo-segmento {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      height: 32px;
+      font-weight: bold;
+      border-radius: 4px;
+      margin: 0;
+      letter-spacing: 0.5px;
+      overflow: hidden;
+      word-break: break-word !important;
+      white-space: normal !important;
+      line-height: 1.08;
+      transition: opacity 0.3s;
+      padding: 0 1px;
+      cursor: pointer;
+    }
+    .rotulo-segmento span {
+      padding: 0 2px;
+      color: inherit;
+      text-align: center;
+      display: block;
+      width: 100%;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .slider-container label {
+      font-weight: bold;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 150px;
+      height: 4px;
+      background: #ddd;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #7c3aedcc;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="transition-colors duration-300">
+
+  <div class="container mx-auto p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-primary">Cobertura de Gotas – Agronomia</h1>
+      <button id="toggleTheme" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded">
+        <span class="dark:hidden">Modo Escuro</span>
+        <span class="hidden dark:inline">Modo Claro</span>
+      </button>
+    </div>
+
+    <!-- Controles de Densidade -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+      <div class="font-semibold text-primary mb-2">Densidade de Gotas (gotas/cm²)</div>
+      <div class="slider-container">
+        <label for="densMin">Mínima: <span id="densMinVal">0</span></label>
+        <input type="range" id="densMin" min="0" max="100" step="1" value="0">
+        <label for="densMax">Máxima: <span id="densMaxVal">100</span></label>
+        <input type="range" id="densMax" min="0" max="100" step="1" value="100">
+      </div>
+      <div style="width:100%;max-width:700px" class="mx-auto">
+        <div style="width:100%;" class="barra-base" id="barraDensity"></div>
+        <div class="barra-ticks-x" id="ticksDensity"></div>
+      </div>
+    </div>
+
+    <div class="space-y-10">
+
+      <!-- Tamanho de Gotas / Classes -->
+      <div>
+        <div class="mb-1 flex justify-between">
+          <div class="font-semibold text-primary">Classe de Tamanho de Gotas (µm)</div>
+        </div>
+        <div style="width:100%;max-width:700px" class="mx-auto">
+          <div style="width:100%;" class="barra-base" id="barraSize"></div>
+          <div class="barra-ticks-x" id="ticksSize"></div>
+          <div id="rotuloClasses" class="rotulo-classes"></div>
+        </div>
+      </div>
+
+      <!-- Cobertura -->
+      <div>
+        <div class="mb-1 flex justify-between">
+          <div class="font-semibold text-primary">Cobertura (%)</div>
+        </div>
+        <div style="width:100%;max-width:700px" class="mx-auto">
+          <div style="width:100%;" class="barra-base" id="barraCoverage"></div>
+          <div class="barra-ticks-x" id="ticksCoverage"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // Definições de classes de gotas
+  const classesGotas = [
+    { nome: "Muito Fina",          limBaixo:   0,    limCima:140.36, cor: "#D7143F", txt: "#fff" },
+    { nome: "Fina",                limBaixo:140.36,  limCima:253.7,  cor: "#F9A03A", txt: "#222" },
+    { nome: "Média",               limBaixo:253.7,   limCima:369.99, cor: "#FFE01B", txt: "#222" },
+    { nome: "Grossa",              limBaixo:369.99,  limCima:426.55, cor: "#006AB6", txt: "#fff" },
+    { nome: "Muito Grossa",        limBaixo:426.55,  limCima:515.22, cor: "#00AB66", txt: "#fff" },
+    { nome: "Extremamente Grossa", limBaixo:515.22,  limCima:686.87, cor: "#BBBBBB", txt: "#222" },
+    { nome: "Ultra Grossa",        limBaixo:686.87,  limCima:1000,   cor: "#555555", txt: "#fff" }
+  ];
+
+  let selectedClasses = [];
+
+  function areaGota(d) {
+    const cm = d * 1e-4;
+    return Math.PI * (cm / 2) ** 2;
+  }
+  function cobertura(dens, diam) {
+    return dens * areaGota(diam) * 100;
+  }
+
+  function criarTicks(parent, min, max, step, unidade="") {
+    parent.innerHTML = "";
+    const spanCount = Math.round((max-min)/step) + 1;
+    for (let i = 0; i < spanCount; i++) {
+      const span = document.createElement('span');
+      span.textContent = Math.round(min + i*step) + (unidade||"");
+      parent.appendChild(span);
+    }
+  }
+
+  function atualizaGraficos() {
+    const barraD = document.getElementById('barraDensity');
+    const barraSz = document.getElementById('barraSize');
+    const barraC = document.getElementById('barraCoverage');
+
+    // lê densidades
+    let minD = parseInt(document.getElementById('densMin').value);
+    let maxD = parseInt(document.getElementById('densMax').value);
+    if (minD > maxD) [minD, maxD] = [maxD, minD];
+
+    // limpa barras
+    [barraD,barraSz,barraC].forEach(b=>
+      b.querySelectorAll('.barra-destaque,.barra-classcolor,.barra-classdestaque').forEach(e=>e.remove())
+    );
+
+    // barra de densidade
+    const leftD = minD/100*100;
+    const widthD = (maxD-minD)/100*100;
+    const dD = document.createElement('div');
+    dD.className = 'barra-destaque';
+    dD.style.left = leftD + '%';
+    dD.style.width = widthD + '%';
+    dD.innerHTML = `<span style="width:100%;text-align:center;">${minD}–${maxD}</span>`;
+    barraD.appendChild(dD);
+    criarTicks(document.getElementById('ticksDensity'), 0, 100, 10);
+
+    // classes de gotas: base + destaque se selecionada
+    classesGotas.forEach(c=>{
+      const leftP = c.limBaixo/1000*100, widthP = (c.limCima-c.limBaixo)/1000*100;
+      const elBase = document.createElement('div');
+      elBase.className = 'barra-classcolor';
+      elBase.style.left = leftP+'%';
+      elBase.style.width = widthP+'%';
+      elBase.style.background = c.cor;
+      barraSz.appendChild(elBase);
+      if (selectedClasses.includes(c.nome)) {
+        const elDest = document.createElement('div');
+        elDest.className = 'barra-classdestaque';
+        elDest.style.left = leftP+'%';
+        elDest.style.width = widthP+'%';
+        elDest.style.background = c.cor;
+        barraSz.appendChild(elDest);
+      }
+    });
+    criarTicks(document.getElementById('ticksSize'), 0, 1000, 200);
+
+    // rótulos clicáveis
+    const rotulo = document.getElementById('rotuloClasses');
+    rotulo.innerHTML = "";
+    classesGotas.forEach(c=>{
+      const largura = ((c.limCima-c.limBaixo)/1000*100)+"%";
+      const el = document.createElement("div");
+      el.className = "rotulo-segmento";
+      el.style.background = c.cor;
+      el.style.width = largura;
+      el.style.color = c.txt;
+      el.style.opacity = selectedClasses.includes(c.nome) ? 1 : 0.3;
+      let partes = c.nome.split(" ");
+      let texto = partes.length > 1
+        ? `<span>${partes[0]}<br>${partes.slice(1).join(" ")}</span>`
+        : `<span>${c.nome}</span>`;
+      el.innerHTML = texto;
+      el.onclick = ()=>{
+        if (selectedClasses.includes(c.nome))
+          selectedClasses = selectedClasses.filter(x=>x!==c.nome);
+        else
+          selectedClasses.push(c.nome);
+        atualizaGraficos();
+      };
+      rotulo.appendChild(el);
+    });
+
+    // cobertura
+    if (selectedClasses.length>0) {
+      // ordena conforme array original
+      const ord = classesGotas.map(c=>c.nome);
+      selectedClasses.sort((a,b)=>ord.indexOf(a)-ord.indexOf(b));
+      const limInf = classesGotas.find(c=>c.nome===selectedClasses[0]).limBaixo;
+      const limSup = classesGotas.find(c=>c.nome===selectedClasses.slice(-1)[0]).limCima;
+      const covMin = cobertura(minD, limInf);
+      const covMax = cobertura(maxD, limSup);
+      const realMin = Math.max(0, Math.min(covMin, covMax));
+      const realMax = Math.max(0, Math.max(covMin, covMax));
+      const lft = Math.min(realMin, 10)/10*100;
+      const wd = Math.min(10, realMax)-Math.max(0, realMin);
+      const wdt = wd/10*100;
+      if (wdt>0) {
+        const dC = document.createElement('div');
+        dC.className = 'barra-destaque';
+        dC.style.left = lft+'%';
+        dC.style.width = wdt+'%';
+        dC.innerHTML = `<span style="width:100%;text-align:center;">${realMin.toFixed(1)}–${realMax.toFixed(1)}</span>`;
+        barraC.appendChild(dC);
+      }
+    }
+    criarTicks(document.getElementById('ticksCoverage'), 0, 10, 2);
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const densMin = document.getElementById('densMin');
+    const densMax = document.getElementById('densMax');
+    const densMinVal = document.getElementById('densMinVal');
+    const densMaxVal = document.getElementById('densMaxVal');
+    function onRangeChange() {
+      densMinVal.textContent = densMin.value;
+      densMaxVal.textContent = densMax.value;
+      atualizaGraficos();
+    }
+    densMin.addEventListener('input', onRangeChange);
+    densMax.addEventListener('input', onRangeChange);
+    // ticks iniciais
+    atualizarTicks:
+    criarTicks(document.getElementById('ticksDensity'), 0, 100, 10);
+    criarTicks(document.getElementById('ticksCoverage'), 0, 10, 2);
+    onRangeChange();
+    // modo escuro
+    function updateThemeUI() {
+      document.body.classList.toggle('dark', document.documentElement.classList.contains('dark'));
+    }
+    document.getElementById('toggleTheme').onclick = ()=>{
+      document.documentElement.classList.toggle('dark');
+      updateThemeUI();
+    };
+    updateThemeUI();
+    window.addEventListener("resize", atualizaGraficos);
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador de Pulverização</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', sans-serif; margin: 20px; background: #121212; color: #ffffff; }
+    h1 { text-align: center; color: #ffffff; margin-bottom: 20px; }
+    .controls {
+      display: flex; justify-content: space-around; margin-bottom: 20px; background: #1e1e1e; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .controls label {
+      display: flex; flex-direction: column; align-items: center; color: #ffffff;
+    }
+    .controls input {
+      width: 200px; cursor: pointer; transition: background 0.3s;
+    }
+    .panel {
+      display: flex; justify-content: space-around; align-items: center; margin-bottom: 10px;
+      background: #1e1e1e; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .semaforo {
+      display: flex; flex-direction: column; align-items: center; background: #333; padding: 10px; border-radius: 8px; width: 50px; margin-left: 10px;
+    }
+    .semaforo .light {
+      width: 24px; height: 24px; margin: 6px 0; background: #222; border-radius: 50%; transition: all 0.3s ease;
+    }
+    .semaforo .light.red.on    { background: red;    box-shadow: 0 0 8px red; }
+    .semaforo .light.yellow.on { background: yellow; box-shadow: 0 0 8px yellow; }
+    .semaforo .light.green.on  { background: lime;   box-shadow: 0 0 8px lime; }
+    #canvas {
+      width: 100%; max-width: 800px; margin: 0 auto;
+    }
+    svg {
+      width: 100%; height: 400px; background: #1c1c1c; border: 1px solid #ccc; border-radius: 10px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none; 
+      appearance: none; 
+      height: 5px; 
+      background: #555; 
+      border-radius: 5px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; 
+      appearance: none; 
+      width: 15px; 
+      height: 15px; 
+      background: #007bff; 
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+  </style>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <h1>Simulador de Distribuição de Agrotóxicos</h1>
+
+  <div class="controls">
+    <label>
+      Altura da barra: <span id="hVal">50</span> cm
+      <input type="range" id="hSlider" min="0" max="100" value="50">
+    </label>
+    <label>
+      Distância entre bicos: <span id="dVal">20</span> cm
+      <input type="range" id="dSlider" min="0" max="100" value="20">
+    </label>
+    <label>
+      Ângulo do jato (vértice β): <span id="aVal">90</span>°
+      <input type="range" id="aSlider" min="30" max="150" value="90">
+    </label>
+  </div>
+
+  <div class="panel">
+    <p>Sob sobreposição: <strong><span id="overlap">0</span>%</strong></p>
+    <p>Altura do cruzamento (solo): <strong><span id="crossH">0</span> cm</strong></p>
+    <div class="semaforo">
+      <div class="light red"></div>
+      <div class="light yellow"></div>
+      <div class="light green"></div>
+    </div>
+  </div>
+
+  <div id="canvas"></div>
+
+  <script>
+    const CM2PX = 4,
+          WIDTH  = 800,
+          HEIGHT = 400,
+          M = { top:20, right:20, bottom:20, left:20 };
+
+    const svg = d3.select('#canvas')
+      .append('svg')
+      .attr('width', WIDTH)
+      .attr('height', HEIGHT);
+
+    const plot    = svg.append('g'),
+          groundY = HEIGHT - M.bottom;
+
+    const hS = d3.select('#hSlider'),
+          dS = d3.select('#dSlider'),
+          aS = d3.select('#aSlider');
+    const hV = d3.select('#hVal'),
+          dV = d3.select('#dVal'),
+          aV = d3.select('#aVal');
+    const ovE = d3.select('#overlap'),
+          crE = d3.select('#crossH');
+    const redL    = d3.select('.light.red'),
+          yellowL = d3.select('.light.yellow'),
+          greenL  = d3.select('.light.green');
+
+    [hS,dS,aS].forEach(s => s.on('input', draw));
+
+    function draw(){
+      const h_cm  = +hS.node().value;
+      const d_cm  = +dS.node().value;
+      const a_deg = +aS.node().value;
+      hV.text(h_cm); dV.text(d_cm); aV.text(a_deg);
+      
+      plot.selectAll('*').remove();
+      const h_px   = h_cm * CM2PX;
+      const halfA  = (a_deg * Math.PI/180)/2;
+      const L_px   = h_px * Math.tan(halfA);
+      const barY   = groundY - h_px;
+      const usable = WIDTH - M.left - M.right;
+      let nB = d_cm > 0 ? Math.floor(usable/(d_cm*CM2PX)) + 1 : 1;
+      nB = Math.max(nB, 1);
+      const offsetX = (usable - (nB - 1) * d_cm * CM2PX) / 2 + M.left;
+
+      plot.append('line')
+        .attr('x1', M.left).attr('y1', barY)
+        .attr('x2', WIDTH - M.right).attr('y2', barY)
+        .attr('stroke', '#ffffff').attr('stroke-width', 2);
+
+      let segments = [], crosses = [];
+      if (nB > 1) {
+        const hBarCross_cm = (d_cm / 2) / Math.tan(halfA);
+        for (let i = 0; i < nB - 1; i++) crosses.push(hBarCross_cm);
+      }
+
+      for (let i = 0; i < nB; i++) {
+        const x = offsetX + i * d_cm * CM2PX;
+        const xL = x - L_px, xR = x + L_px;
+        segments.push([xL, xR]);
+        plot.append('polygon')
+          .attr('points', `${x},${barY} ${xL},${groundY} ${xR},${groundY}`)
+          .attr('fill', 'rgba(0,150,255,0.5)')
+          .attr('stroke', 'steelblue');
+      }
+
+      segments.sort((a, b) => a[0] - b[0]);
+      let curr = segments[0], totCov = 0, totOver = 0;
+      for (let i = 1; i < segments.length; i++) {
+        const s = segments[i];
+        if (s[0] <= curr[1]) {
+          totOver += curr[1] - s[0];
+          curr[1] = Math.max(curr[1], s[1]);
+        } else {
+          totCov += curr[1] - curr[0];
+          curr = s;
+        }
+      }
+      totCov += curr[1] - curr[0];
+      const pct = totOver / usable * 100;
+      ovE.text(pct.toFixed(1));
+
+      const minBar = crosses.length > 0 ? Math.min(...crosses) : 0;
+      const crossGround = h_cm - minBar;
+      crE.text(crossGround.toFixed(1));
+
+      redL.classed('on', false);
+      yellowL.classed('on', false);
+      greenL.classed('on', false);
+      const metade = h_cm / 2;
+      if (minBar > metade)        redL.classed('on', true);
+      else if (minBar >= 0.9 * metade && minBar <= 1.1 * metade)
+                                 yellowL.classed('on', true);
+      else                        greenL.classed('on', true);
+    }
+
+    draw();
+  </script>
+</body>
+</html>
